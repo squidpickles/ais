@@ -2,46 +2,46 @@ use nom::{hex_u32, anychar, digit, IResult};
 use errors::*;
 
 #[derive(PartialEq, Debug)]
-pub enum AisMessageType {
+pub enum AisSentenceType {
     AIVDM,
     AIVDO,
     Unknown,
 }
 
-impl<'a> From<&'a [u8]> for AisMessageType {
+impl<'a> From<&'a [u8]> for AisSentenceType {
     fn from(typ: &'a [u8]) -> Self {
         match typ {
-            b"AIVDM" => AisMessageType::AIVDM,
-            b"AIVDO" => AisMessageType::AIVDO,
-            _ => AisMessageType::Unknown,
+            b"AIVDM" => AisSentenceType::AIVDM,
+            b"AIVDO" => AisSentenceType::AIVDO,
+            _ => AisSentenceType::Unknown,
         }
     }
 }
 
 #[derive(PartialEq, Debug)]
-pub struct AisMessage<'a> {
-    pub msg_type: AisMessageType,
+pub struct AisSentence<'a> {
+    pub msg_type: AisSentenceType,
     pub num_fragments: u8,
     pub fragment_number: u8,
     pub message_id: Option<u8>,
     pub channel: char,
-    raw_data: &'a [u8],
+    data: &'a [u8],
     fill_bit_count: u8,
 }
 
-impl<'a> AisMessage<'a> {
-    pub fn parse(line: &'a [u8]) -> Result<AisMessage<'a>> {
-        let (raw_data, ais_msg, checksum) = match nmea_sentence(line) {
+impl<'a> AisSentence<'a> {
+    pub fn parse(line: &'a [u8]) -> Result<AisSentence<'a>> {
+        let (data, ais_msg, checksum) = match nmea_sentence(line) {
             IResult::Done(_, result) => result,
-            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS message")?,
-            IResult::Incomplete(_) => Err("incomplete AIS message")?,
+            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
+            IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
         };
-        Self::check_checksum(raw_data, checksum)?;
+        Self::check_checksum(data, checksum)?;
         Ok(ais_msg)
     }
 
-    fn check_checksum(message: &[u8], expected_checksum: u8) -> Result<u8> {
-        let received_checksum = message.iter().fold(0u8, |acc, &item| acc ^ item);
+    fn check_checksum(sentence: &[u8], expected_checksum: u8) -> Result<u8> {
+        let received_checksum = sentence.iter().fold(0u8, |acc, &item| acc ^ item);
         if expected_checksum != received_checksum {
             Err(ErrorKind::Checksum(expected_checksum, received_checksum))?
         } else {
@@ -68,7 +68,7 @@ named!(ais_data, take_until!(","));
 named!(fill_bit_count<u8>, verify!(u8_digit, |val:u8| val < 6));
 named!(data_end, tag!("*"));
 named!(checksum<u32>, verify!(hex_u32, |val:u32| val <= 0xff));
-named!(pub ais_message<AisMessage>, do_parse!(
+named!(pub ais_sentence<AisSentence>, do_parse!(
     typ: ais_type
     >> tag!(",")
     >> ns: num_fragments
@@ -82,13 +82,13 @@ named!(pub ais_message<AisMessage>, do_parse!(
     >> data: ais_data
     >> tag!(",")
     >> fb: fill_bit_count
-    >> (AisMessage {msg_type: typ.into(), num_fragments: ns, fragment_number: sn, message_id: smid, channel: chan, raw_data: data, fill_bit_count: fb})
+    >> (AisSentence {msg_type: typ.into(), num_fragments: ns, fragment_number: sn, message_id: smid, channel: chan, data: data, fill_bit_count: fb})
 ));
 
-named!(pub nmea_sentence<(&[u8], AisMessage, u8)>, do_parse!(
+named!(pub nmea_sentence<(&[u8], AisSentence, u8)>, do_parse!(
     nmea_start
     >> raw: peek!(take_until!("*"))
-    >> msg: terminated!(ais_message, data_end)
+    >> msg: terminated!(ais_sentence, data_end)
     >> cs: checksum
     >> (raw, msg, cs as u8)
 ));
@@ -108,14 +108,14 @@ mod tests {
 
     #[test]
     fn parse_valid_structure() {
-        let result = ais_message(&GOOD_CHECKSUM[1..63]).unwrap();
+        let result = ais_sentence(&GOOD_CHECKSUM[1..63]).unwrap();
         assert_eq!(result.0, b"");
-        assert_eq!(result.1, AisMessage {msg_type: AisMessageType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', raw_data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
+        assert_eq!(result.1, AisSentence {msg_type: AisSentenceType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
     }
 
     #[test]
     fn parse_invalid_structure() {
-        let result = ais_message(&BAD_STRUCTURE[1..64]).unwrap_err();
+        let result = ais_sentence(&BAD_STRUCTURE[1..64]).unwrap_err();
         assert_eq!(result, nom::ErrorKind::Digit);
     }
 
@@ -123,25 +123,25 @@ mod tests {
     fn parse_valid_sentence() {
         let result = nmea_sentence(GOOD_CHECKSUM).unwrap();
         assert_eq!(result.0, b"");
-        assert_eq!((result.1).1, AisMessage {msg_type: AisMessageType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', raw_data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
+        assert_eq!((result.1).1, AisSentence {msg_type: AisSentenceType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
         assert_eq!((result.1).2, 122);
     }
 
     #[test]
     fn parse_using_struct_valid() {
-        let result = AisMessage::parse(GOOD_CHECKSUM).unwrap();
-        assert_eq!(result, AisMessage {msg_type: AisMessageType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', raw_data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
+        let result = AisSentence::parse(GOOD_CHECKSUM).unwrap();
+        assert_eq!(result, AisSentence {msg_type: AisSentenceType::AIVDM, num_fragments: 1, fragment_number: 1, message_id: None, channel: 'A', data: &GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX], fill_bit_count: 0});
     }
 
     #[test]
     fn parse_valid_checksum() {
-        let result = AisMessage::parse(GOOD_CHECKSUM);
+        let result = AisSentence::parse(GOOD_CHECKSUM);
         assert!(result.is_ok());
     }
 
     #[test]
     fn parse_invalid_checksum() {
-        let result = AisMessage::parse(BAD_CHECKSUM);
+        let result = AisSentence::parse(BAD_CHECKSUM);
         assert!(result.is_err());
     }
 

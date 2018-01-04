@@ -4,7 +4,7 @@ extern crate error_chain;
 extern crate nom;
 
 pub mod errors;
-pub mod parser;
+pub mod sentence;
 
 #[cfg(test)]
 mod tests {
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn it_works() {
         for line in TEST_MESSAGES.iter() {
-            let result = parser::AisMessage::parse(line);
+            let result = parser::AisSentence::parse(line);
             assert!(result.is_ok());
         }
     }

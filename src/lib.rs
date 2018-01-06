@@ -5,6 +5,7 @@ extern crate nom;
 
 pub mod errors;
 pub mod sentence;
+pub mod message;
 
 #[cfg(test)]
 mod tests {

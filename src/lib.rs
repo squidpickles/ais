@@ -1,3 +1,18 @@
+//! AIS parsing library
+//!
+//! This library provides tools for parsing AIS messages
+//! # Example:
+//! ```
+//! extern crate ais;
+//! use ais::sentence::AisSentence;
+//!
+//! fn main() {
+//!     let test_message = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
+//!     let sentence = AisSentence::parse(test_message).unwrap();
+//!     assert_eq!(sentence.num_fragments, 1);
+//!     assert_eq!(sentence.channel, 'B');
+//! }
+//! ```
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -5,7 +20,7 @@ extern crate nom;
 
 pub mod errors;
 pub mod sentence;
-pub mod message;
+pub mod messages;
 
 #[cfg(test)]
 mod tests {

@@ -1,33 +1,26 @@
-use nom::{anychar, digit, IResult, hex_u32};
 use errors::*;
-use super::sentence::AisSentence;
 use std::cmp;
 
+pub mod position_report;
+
 pub type BitCount = usize;
+pub type BitStream<'a> = &'a [u8];
 
-pub struct AisMessage<'a> {
-    bitstream: &'a [u8],
+pub trait AisMessage<'a>: Sized {
+    fn name(&self) -> &'static str;
+    fn parse(data: &'a [u8]) -> Result<Self>;
 }
 
-impl<'a> AisMessage<'a> {
-    pub fn new_multi(sentence: &'a [&'a AisSentence]) -> Result<AisMessage<'a>> {
-        unimplemented!()
-    }
-
-    pub fn new(sentence: &'a AisSentence) -> Result<AisMessage<'a>> {
-        //AisMessage::new_multi(&[sentence])
-        unimplemented!()
-    }
-    pub fn parse(data: &'a [u8], total_length: BitCount) -> Result<AisMessage<'a>> {
-        unimplemented!()
-    }
-
-    fn unarmor_ais_data(data: &'a [u8], total_bit_length: BitCount) -> Vec<u8> {
-        unimplemented!()
+#[inline]
+pub fn sixbit_to_ascii(data: u8) -> Result<u8> {
+    match data {
+        0...31 => Ok(data + 64),
+        32...63 => Ok(data),
+        _ => Err(format!("Illegal 6-bit character: {}", data).into()),
     }
 }
 
-fn unarmor<'a>(data: &'a [u8], fill_bits: BitCount) -> Result<Vec<u8>> {
+pub fn unarmor<'a>(data: BitStream, fill_bits: BitCount) -> Result<Vec<u8>> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
     let mut output = vec![0; byte_count];

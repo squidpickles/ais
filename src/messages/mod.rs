@@ -1,14 +1,25 @@
 use errors::*;
 use std::cmp;
 
+pub mod radio_status;
 pub mod position_report;
 
 pub type BitCount = usize;
+pub type ByteStream<'a> = &'a [u8];
 pub type BitStream<'a> = &'a [u8];
 
 pub trait AisMessage<'a>: Sized {
     fn name(&self) -> &'static str;
     fn parse(data: &'a [u8]) -> Result<Self>;
+}
+
+#[inline]
+pub fn u32_to_u8_array(data: u32) -> [u8; 4] {
+    let b1: u8 = ((data >> 24) & 0xff) as u8;
+    let b2: u8 = ((data >> 16) & 0xff) as u8;
+    let b3: u8 = ((data >> 8) & 0xff) as u8;
+    let b4: u8 = (data & 0xff) as u8;
+    return [b1, b2, b3, b4];
 }
 
 #[inline]
@@ -20,7 +31,7 @@ pub fn sixbit_to_ascii(data: u8) -> Result<u8> {
     }
 }
 
-pub fn unarmor<'a>(data: BitStream, fill_bits: BitCount) -> Result<Vec<u8>> {
+pub fn unarmor<'a>(data: ByteStream, fill_bits: BitCount) -> Result<Vec<u8>> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
     let mut output = vec![0; byte_count];

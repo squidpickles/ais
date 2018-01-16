@@ -1,7 +1,9 @@
 use errors::*;
 use nom::IResult;
 use super::{AisMessage, BitStream};
+use super::radio_status::{ItdmaMessage, RadioStatus, SotdmaMessage};
 
+#[derive(Debug)]
 pub struct PositionReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -17,7 +19,7 @@ pub struct PositionReport {
     pub timestamp: u8,
     pub maneuver_indicator: Option<ManeuverIndicator>,
     pub raim: bool,
-    pub radio_status: u32,
+    pub radio_status: RadioStatus,
 }
 
 impl<'a> AisMessage<'a> for PositionReport {
@@ -81,6 +83,14 @@ fn parse_raim(data: u8) -> Result<bool> {
     }
 }
 
+fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
+    match msg_type {
+        1 | 2 => SotdmaMessage::parser(input),
+        3 => ItdmaMessage::parser(input),
+        _ => ::nom::IResult::Error(::nom::ErrorKind::Digit),
+    }
+}
+
 named!(
     position_parser<PositionReport>,
     bits!(do_parse!(
@@ -94,7 +104,7 @@ named!(
             >> cog: take_bits!(u16, 12) >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
             >> stamp: take_bits!(u8, 6) >> maneuver: take_bits!(u8, 2)
             >> spare: take_bits!(u8, 3) >> raim: map_res!(take_bits!(u8, 1), parse_raim)
-            >> radio: take_bits!(u32, 19) >> (PositionReport {
+            >> radio: apply!(parse_radio, msg_type) >> (PositionReport {
             message_type: msg_type,
             repeat_indicator: repeat,
             mmsi: mmsi,
@@ -114,6 +124,7 @@ named!(
     ))
 );
 
+#[derive(Debug, PartialEq)]
 pub enum Accuracy {
     Unaugmented,
     DGPS,
@@ -129,6 +140,7 @@ impl Accuracy {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum NavigationStatus {
     UnderWayUsingEngine,
     AtAnchor,
@@ -171,10 +183,12 @@ impl NavigationStatus {
     }
 }
 
+#[derive(Debug)]
 pub struct RateOfTurn {
     raw: i8,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Direction {
     Port,
     Starboard,
@@ -209,7 +223,60 @@ impl RateOfTurn {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ManeuverIndicator {
     NoSpecialManeuver,
     SpecialManeuver,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use messages::radio_status::{SubMessage, SyncState};
+
+    #[test]
+    fn test_position() {
+        let bytestream = b"13u?etPv2;0n:dDPwUM1U1Cb069D";
+        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let position = PositionReport::parse(&bitstream).unwrap();
+        assert_eq!(position.message_type, 1);
+        assert_eq!(position.repeat_indicator, 0);
+        assert_eq!(position.mmsi, 265547250);
+        assert_eq!(
+            position.navigation_status,
+            Some(NavigationStatus::UnderWayUsingEngine)
+        );
+        let rate_of_turn = position.rate_of_turn.unwrap();
+        assert_eq!(rate_of_turn.rate().unwrap().ceil(), 3.0);
+        assert_eq!(rate_of_turn.direction(), Some(Direction::Port));
+        assert_eq!(position.speed_over_ground, Some(13.9));
+        assert_eq!(position.position_accuracy, Accuracy::Unaugmented);
+        assert_eq!(position.longitude.unwrap().ceil(), 12.0);
+        assert_eq!(position.latitude.unwrap().ceil(), 58.0);
+        assert_eq!(position.course_over_ground, Some(40.4));
+        assert_eq!(position.true_heading, Some(41));
+        assert_eq!(position.timestamp, 53);
+        assert_eq!(position.maneuver_indicator, None);
+        assert_eq!(position.raim, false);
+        if let RadioStatus::Sotdma(radio_status) = position.radio_status {
+            assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
+            assert_eq!(radio_status.slot_timeout, 1);
+            if let SubMessage::UtcHourAndMinute(hour, minute) = radio_status.sub_message {
+                assert_eq!(hour, 17);
+                assert_eq!(minute, 21);
+            } else {
+                panic!("Expected UTC Hour and Minute submessage");
+            }
+        } else {
+            panic!("Expected SOTDMA message");
+        }
+    }
+
+    #[test]
+    fn test_type3() {
+        // FIXME: broken test
+        let bytestream = b"38Id705000rRVJhE7cl9n;160000";
+        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let position = PositionReport::parse(&bitstream).unwrap();
+    }
 }

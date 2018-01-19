@@ -12,8 +12,8 @@ pub struct PositionReport {
     pub rate_of_turn: Option<RateOfTurn>,
     pub speed_over_ground: Option<f32>,
     pub position_accuracy: Accuracy,
-    pub longitude: Option<f64>,
-    pub latitude: Option<f64>,
+    pub longitude: Option<f32>,
+    pub latitude: Option<f32>,
     pub course_over_ground: Option<f32>,
     pub true_heading: Option<u16>,
     pub timestamp: u8,
@@ -44,19 +44,19 @@ fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
     }
 }
 
-fn parse_longitude(data: u32) -> Result<Option<f64>> {
+fn parse_longitude(data: i32) -> Result<Option<f32>> {
     match data {
-        0...108000000 => Ok(Some(data as f64 / 600000.0)),
+        -108000000...108000000 => Ok(Some(data as f32 / 600000.0)),
         108600000 => Ok(None),
-        _ => Err(format!("Invalid longitude: {}", data as f64 / 600000.0).into()),
+        _ => Err(format!("Invalid longitude: {}", data as f32 / 600000.0).into()),
     }
 }
 
-fn parse_latitude(data: u32) -> Result<Option<f64>> {
+fn parse_latitude(data: i32) -> Result<Option<f32>> {
     match data {
-        0...54000000 => Ok(Some(data as f64 / 600000.0)),
+        -54000000...54000000 => Ok(Some(data as f32 / 600000.0)),
         54600000 => Ok(None),
-        _ => Err(format!("Invalid latitude: {}", data as f64 / 600000.0).into()),
+        _ => Err(format!("Invalid latitude: {}", data as f32 / 600000.0).into()),
     }
 }
 
@@ -83,6 +83,20 @@ fn parse_raim(data: u8) -> Result<bool> {
     }
 }
 
+fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
+    assert!(len <= ::std::mem::size_of::<i32>() * 8);
+    let parsed = try_parse!(input, take_bits!(i32, len));
+    let input = parsed.1;
+    let mask = !0i32 << len;
+    IResult::Done(
+        parsed.0,
+        match (input << (32 - len)).leading_zeros() {
+            0 => input | mask,
+            _ => !mask & input,
+        },
+    )
+}
+
 fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
     match msg_type {
         1 | 2 => SotdmaMessage::parser(input),
@@ -99,8 +113,8 @@ named!(
             >> rot: take_bits!(u8, 8)
             >> sog: map_res!(take_bits!(u16, 10), parse_speed_over_ground)
             >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
-            >> lon: map_res!(take_bits!(u32, 28), parse_longitude)
-            >> lat: map_res!(take_bits!(u32, 27), parse_latitude)
+            >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
+            >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
             >> cog: take_bits!(u16, 12) >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
             >> stamp: take_bits!(u8, 6) >> maneuver: take_bits!(u8, 2)
             >> spare: take_bits!(u8, 3) >> raim: map_res!(take_bits!(u8, 1), parse_raim)
@@ -273,10 +287,44 @@ mod tests {
     }
 
     #[test]
+    fn test_type1() {
+        let bytestream = b"16SteH0P00Jt63hHaa6SagvJ087r";
+        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let position = PositionReport::parse(&bitstream).unwrap();
+        assert_eq!(position.longitude.unwrap(), -70.7582);
+        if let RadioStatus::Sotdma(radio_status) = position.radio_status {
+            assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
+            assert_eq!(radio_status.slot_timeout, 2);
+            assert_eq!(radio_status.sub_message, SubMessage::SlotNumber(506));
+        } else {
+            panic!("Expected SOTDMA message");
+        }
+    }
+
+    #[test]
     fn test_type3() {
         // FIXME: broken test
         let bytestream = b"38Id705000rRVJhE7cl9n;160000";
         let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
+        assert_eq!(position.message_type, 3);
+        assert_eq!(position.mmsi, 563808000);
+        assert_eq!(
+            position.navigation_status.unwrap(),
+            NavigationStatus::Moored
+        );
+        assert_eq!(position.longitude.unwrap(), -76.32753);
+        assert_eq!(position.latitude.unwrap(), 36.91);
+        assert_eq!(position.course_over_ground.unwrap(), 252.0);
+        assert_eq!(position.true_heading.unwrap(), 352);
+        assert_eq!(position.timestamp, 35);
+        if let RadioStatus::Itdma(radio_status) = position.radio_status {
+            assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
+            assert_eq!(radio_status.slot_increment, 0);
+            assert_eq!(radio_status.num_slots, 0);
+            assert_eq!(radio_status.keep, false);
+        } else {
+            panic!("Expected ITDMA message");
+        }
     }
 }

@@ -1,7 +1,8 @@
 use errors::*;
 use nom::IResult;
-use super::{AisMessage, BitStream};
-use super::radio_status::{ItdmaMessage, RadioStatus, SotdmaMessage};
+use super::{AisMessage, BitStream, signed_i32, u8_to_bool};
+use super::radio_status::{parse_radio, RadioStatus};
+use super::navigation::*;
 
 #[derive(Debug)]
 pub struct PositionReport {
@@ -36,75 +37,6 @@ impl<'a> AisMessage<'a> for PositionReport {
     }
 }
 
-fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
-    match data {
-        0...1022 => Ok(Some(data as f32 / 10.0)),
-        1023 => Ok(None),
-        _ => Err(format!("Invalid speed over ground: {}", data).into()),
-    }
-}
-
-fn parse_longitude(data: i32) -> Result<Option<f32>> {
-    match data {
-        -108000000...108000000 => Ok(Some(data as f32 / 600000.0)),
-        108600000 => Ok(None),
-        _ => Err(format!("Invalid longitude: {}", data as f32 / 600000.0).into()),
-    }
-}
-
-fn parse_latitude(data: i32) -> Result<Option<f32>> {
-    match data {
-        -54000000...54000000 => Ok(Some(data as f32 / 600000.0)),
-        54600000 => Ok(None),
-        _ => Err(format!("Invalid latitude: {}", data as f32 / 600000.0).into()),
-    }
-}
-
-fn parse_cog(data: u16) -> Option<f32> {
-    match data {
-        3600 => None,
-        _ => Some(data as f32 / 10.0),
-    }
-}
-
-fn parse_heading(data: u16) -> Result<Option<u16>> {
-    match data {
-        0...359 => Ok(Some(data)),
-        511 => Ok(None),
-        _ => Err(format!("Invalid heading: {}", data).into()),
-    }
-}
-
-fn parse_raim(data: u8) -> Result<bool> {
-    match data {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(format!("Invalid RAIM status: {}", data).into()),
-    }
-}
-
-fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
-    assert!(len <= ::std::mem::size_of::<i32>() * 8);
-    let parsed = try_parse!(input, take_bits!(i32, len));
-    let input = parsed.1;
-    let mask = !0i32 << len;
-    IResult::Done(
-        parsed.0,
-        match (input << (32 - len)).leading_zeros() {
-            0 => input | mask,
-            _ => !mask & input,
-        },
-    )
-}
-
-fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
-    match msg_type {
-        1 | 2 => SotdmaMessage::parser(input),
-        3 => ItdmaMessage::parser(input),
-        _ => ::nom::IResult::Error(::nom::ErrorKind::Digit),
-    }
-}
-
 named!(
     position_parser<PositionReport>,
     bits!(do_parse!(
@@ -117,7 +49,7 @@ named!(
             >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
             >> cog: take_bits!(u16, 12) >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
             >> stamp: take_bits!(u8, 6) >> maneuver: take_bits!(u8, 2)
-            >> spare: take_bits!(u8, 3) >> raim: map_res!(take_bits!(u8, 1), parse_raim)
+            >> spare: take_bits!(u8, 3) >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
             >> radio: apply!(parse_radio, msg_type) >> (PositionReport {
             message_type: msg_type,
             repeat_indicator: repeat,
@@ -137,22 +69,6 @@ named!(
         })
     ))
 );
-
-#[derive(Debug, PartialEq)]
-pub enum Accuracy {
-    Unaugmented,
-    DGPS,
-}
-
-impl Accuracy {
-    fn parse(data: u8) -> Result<Self> {
-        match data {
-            0 => Ok(Accuracy::Unaugmented),
-            1 => Ok(Accuracy::DGPS),
-            _ => Err("Unknown accuracy value".into()),
-        }
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum NavigationStatus {
@@ -195,52 +111,6 @@ impl NavigationStatus {
             _ => Err(format!("Unknown navigation status: {}", data).into()),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct RateOfTurn {
-    raw: i8,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Direction {
-    Port,
-    Starboard,
-}
-
-impl RateOfTurn {
-    pub fn parse(data: u8) -> Option<Self> {
-        #[allow(overflowing_literals)]
-        match data as i8 {
-            128 => None, // does indeed encode as 0x80
-            -127...127 => Some(RateOfTurn { raw: data as i8 }),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn rate(&self) -> Option<f32> {
-        match self.raw {
-            -126...126 => Some((self.raw as f32 / 4.733).powi(2)),
-            -127 => None,
-            127 => None,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn direction(&self) -> Option<Direction> {
-        match self.raw {
-            0 => None,
-            1...127 => Some(Direction::Starboard),
-            -127...-1 => Some(Direction::Port),
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ManeuverIndicator {
-    NoSpecialManeuver,
-    SpecialManeuver,
 }
 
 #[cfg(test)]

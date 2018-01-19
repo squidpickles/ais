@@ -146,3 +146,11 @@ impl ItdmaMessage {
         )
     );
 }
+
+pub fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
+    match msg_type {
+        1 | 2 | 4 => SotdmaMessage::parser(input),
+        3 => ItdmaMessage::parser(input),
+        _ => ::nom::IResult::Error(::nom::ErrorKind::Digit),
+    }
+}

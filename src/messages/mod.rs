@@ -1,8 +1,11 @@
 use errors::*;
 use std::cmp;
+use nom::IResult;
 
-pub mod radio_status;
+mod navigation;
+mod radio_status;
 pub mod position_report;
+pub mod base_station_report;
 
 pub type BitCount = usize;
 pub type ByteStream<'a> = &'a [u8];
@@ -13,8 +16,7 @@ pub trait AisMessage<'a>: Sized {
     fn parse(data: &'a [u8]) -> Result<Self>;
 }
 
-#[inline]
-pub fn u32_to_u8_array(data: u32) -> [u8; 4] {
+fn u32_to_u8_array(data: u32) -> [u8; 4] {
     let b1: u8 = ((data >> 24) & 0xff) as u8;
     let b2: u8 = ((data >> 16) & 0xff) as u8;
     let b3: u8 = ((data >> 8) & 0xff) as u8;
@@ -23,12 +25,35 @@ pub fn u32_to_u8_array(data: u32) -> [u8; 4] {
 }
 
 #[inline]
-pub fn sixbit_to_ascii(data: u8) -> Result<u8> {
+fn sixbit_to_ascii(data: u8) -> Result<u8> {
     match data {
         0...31 => Ok(data + 64),
         32...63 => Ok(data),
         _ => Err(format!("Illegal 6-bit character: {}", data).into()),
     }
+}
+
+#[inline]
+fn u8_to_bool(data: u8) -> Result<bool> {
+    match data {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(format!("Invalid boolean value: {}", data).into()),
+    }
+}
+
+fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
+    assert!(len <= ::std::mem::size_of::<i32>() * 8);
+    let parsed = try_parse!(input, take_bits!(i32, len));
+    let input = parsed.1;
+    let mask = !0i32 << len;
+    IResult::Done(
+        parsed.0,
+        match (input << (32 - len)).leading_zeros() {
+            0 => input | mask,
+            _ => !mask & input,
+        },
+    )
 }
 
 pub fn unarmor<'a>(data: ByteStream, fill_bits: BitCount) -> Result<Vec<u8>> {
@@ -120,4 +145,5 @@ mod tests {
         let result = unarmor(input, 3).unwrap();
         assert_eq!([0b00100111, 0b10011000, 0b00000000], &result[..]);
     }
+    // TODO: test parse i32
 }

@@ -2,10 +2,12 @@ use errors::*;
 use std::cmp;
 use nom::IResult;
 
+mod common;
 mod navigation;
 mod radio_status;
 pub mod position_report;
 pub mod base_station_report;
+pub mod aid_to_navigation_report;
 
 pub type BitCount = usize;
 pub type ByteStream<'a> = &'a [u8];

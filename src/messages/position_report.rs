@@ -1,6 +1,6 @@
 use errors::*;
 use nom::IResult;
-use super::{AisMessage, BitStream, signed_i32, u8_to_bool};
+use super::{AisMessageType, BitStream, signed_i32, u8_to_bool};
 use super::radio_status::{parse_radio, RadioStatus};
 use super::navigation::*;
 
@@ -23,7 +23,7 @@ pub struct PositionReport {
     pub radio_status: RadioStatus,
 }
 
-impl<'a> AisMessage<'a> for PositionReport {
+impl<'a> AisMessageType<'a> for PositionReport {
     fn name(&self) -> &'static str {
         "Position Report Class A"
     }

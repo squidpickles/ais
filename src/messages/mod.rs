@@ -13,9 +13,37 @@ pub type BitCount = usize;
 pub type ByteStream<'a> = &'a [u8];
 pub type BitStream<'a> = &'a [u8];
 
-pub trait AisMessage<'a>: Sized {
+#[derive(Debug)]
+pub enum AisMessage {
+    PositionReport(position_report::PositionReport),
+    BaseStationReport(base_station_report::BaseStationReport),
+    AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
+}
+
+pub trait AisMessageType<'a>: Sized {
     fn name(&self) -> &'static str;
     fn parse(data: &'a [u8]) -> Result<Self>;
+}
+
+named!(message_type<(&[u8], usize), u8>, peek!(take_bits!(u8, 6)));
+
+pub fn parse(unarmored: BitStream) -> Result<AisMessage> {
+    match message_type((unarmored, 0)) {
+        IResult::Done(_, result) => Ok(match result {
+            1...3 => {
+                AisMessage::PositionReport(position_report::PositionReport::parse(&unarmored)?)
+            }
+            4 => AisMessage::BaseStationReport(base_station_report::BaseStationReport::parse(
+                &unarmored,
+            )?),
+            21 => AisMessage::AidToNavigationReport(
+                aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
+            ),
+            _ => Err(format!("Unimplemented type: {}", result))?,
+        }),
+        IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
+        IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
+    }
 }
 
 fn u32_to_u8_array(data: u32) -> [u8; 4] {

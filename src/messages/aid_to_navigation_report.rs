@@ -1,6 +1,6 @@
 use errors::*;
 use nom::IResult;
-use super::{sixbit_to_ascii, AisMessage, BitStream, signed_i32, u8_to_bool};
+use super::{sixbit_to_ascii, AisMessageType, BitStream, signed_i32, u8_to_bool};
 use super::common::*;
 use super::navigation::*;
 
@@ -102,7 +102,7 @@ pub struct AidToNavigationReport {
     pub assigned_mode: bool,
 }
 
-impl<'a> AisMessage<'a> for AidToNavigationReport {
+impl<'a> AisMessageType<'a> for AidToNavigationReport {
     fn name(&self) -> &'static str {
         "Aid to Navigation Report"
     }

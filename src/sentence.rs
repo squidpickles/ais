@@ -32,8 +32,8 @@ pub struct AisSentence<'a> {
     pub fragment_number: u8,
     pub message_id: Option<u8>,
     pub channel: char,
-    data: &'a [u8],
-    fill_bit_count: u8,
+    pub data: &'a [u8],
+    pub fill_bit_count: u8,
 }
 
 impl<'a> AisSentence<'a> {

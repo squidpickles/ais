@@ -1,5 +1,5 @@
 //! Library errors
-error_chain!{
+error_chain! {
     errors {
         /// Incorrect NMEA sentence format
         Nmea(msg: String) {

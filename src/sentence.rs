@@ -1,6 +1,6 @@
 //! Handlers for AIS messages at the NMEA sentence layer
-use nom::{anychar, digit, IResult, hex_u32};
 use errors::*;
+use nom::{anychar, digit, hex_u32, IResult};
 
 #[derive(PartialEq, Debug)]
 /// Represents the NMEA sentence type of an AIS message
@@ -191,5 +191,4 @@ mod tests {
         let result = AisSentence::parse(BAD_CHECKSUM);
         assert!(result.is_err());
     }
-
 }

@@ -1,8 +1,8 @@
+use super::navigation::*;
+use super::radio_status::{parse_radio, RadioStatus};
+use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
 use errors::*;
 use nom::IResult;
-use super::{AisMessageType, BitStream, signed_i32, u8_to_bool};
-use super::radio_status::{parse_radio, RadioStatus};
-use super::navigation::*;
 
 #[derive(Debug)]
 pub struct PositionReport {
@@ -40,33 +40,39 @@ impl<'a> AisMessageType<'a> for PositionReport {
 named!(
     position_parser<PositionReport>,
     bits!(do_parse!(
-        msg_type: take_bits!(u8, 6) >> repeat: take_bits!(u8, 2) >> mmsi: take_bits!(u32, 30)
+        msg_type: take_bits!(u8, 6)
+            >> repeat: take_bits!(u8, 2)
+            >> mmsi: take_bits!(u32, 30)
             >> nav_status: map_res!(take_bits!(u8, 4), NavigationStatus::parse)
             >> rot: take_bits!(u8, 8)
             >> sog: map_res!(take_bits!(u16, 10), parse_speed_over_ground)
             >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
             >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
             >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
-            >> cog: take_bits!(u16, 12) >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
-            >> stamp: take_bits!(u8, 6) >> maneuver: take_bits!(u8, 2)
-            >> spare: take_bits!(u8, 3) >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> radio: apply!(parse_radio, msg_type) >> (PositionReport {
-            message_type: msg_type,
-            repeat_indicator: repeat,
-            mmsi: mmsi,
-            navigation_status: nav_status,
-            rate_of_turn: RateOfTurn::parse(rot),
-            speed_over_ground: sog,
-            position_accuracy: accuracy,
-            longitude: lon,
-            latitude: lat,
-            course_over_ground: parse_cog(cog),
-            true_heading: hdg,
-            timestamp: stamp,
-            maneuver_indicator: None,
-            raim: raim,
-            radio_status: radio,
-        })
+            >> cog: take_bits!(u16, 12)
+            >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
+            >> stamp: take_bits!(u8, 6)
+            >> maneuver: take_bits!(u8, 2)
+            >> spare: take_bits!(u8, 3)
+            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
+            >> radio: apply!(parse_radio, msg_type)
+            >> (PositionReport {
+                message_type: msg_type,
+                repeat_indicator: repeat,
+                mmsi: mmsi,
+                navigation_status: nav_status,
+                rate_of_turn: RateOfTurn::parse(rot),
+                speed_over_ground: sog,
+                position_accuracy: accuracy,
+                longitude: lon,
+                latitude: lat,
+                course_over_ground: parse_cog(cog),
+                true_heading: hdg,
+                timestamp: stamp,
+                maneuver_indicator: None,
+                raim: raim,
+                radio_status: radio,
+            })
     ))
 );
 

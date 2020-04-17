@@ -1,9 +1,9 @@
-use errors::*;
-use nom::IResult;
-use super::{AisMessageType, BitStream, signed_i32, u8_to_bool};
-use super::radio_status::{parse_radio, RadioStatus};
 use super::common::*;
 use super::navigation::*;
+use super::radio_status::{parse_radio, RadioStatus};
+use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
+use errors::*;
+use nom::IResult;
 
 #[derive(Debug)]
 pub struct BaseStationReport {
@@ -71,32 +71,39 @@ named!(minsec_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 6), |m
 named!(
     base_parser<BaseStationReport>,
     bits!(do_parse!(
-        msg_type: take_bits!(u8, 6) >> repeat: take_bits!(u8, 2) >> mmsi: take_bits!(u32, 30)
-            >> year: call!(year_parser) >> month: call!(month_parser)
-            >> day: call!(day_parser) >> hour: call!(hour_parser)
-            >> minute: call!(minsec_parser) >> second: call!(minsec_parser)
+        msg_type: take_bits!(u8, 6)
+            >> repeat: take_bits!(u8, 2)
+            >> mmsi: take_bits!(u32, 30)
+            >> year: call!(year_parser)
+            >> month: call!(month_parser)
+            >> day: call!(day_parser)
+            >> hour: call!(hour_parser)
+            >> minute: call!(minsec_parser)
+            >> second: call!(minsec_parser)
             >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
             >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
             >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
             >> epfd: map_res!(take_bits!(u8, 4), EpfdType::parse)
-            >> spare: take_bits!(u8, 10) >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> radio: apply!(parse_radio, msg_type) >> (BaseStationReport {
-            message_type: msg_type,
-            repeat_indicator: repeat,
-            mmsi: mmsi,
-            year: year,
-            month: month,
-            day: day,
-            hour: hour,
-            minute: minute,
-            second: second,
-            fix_quality: accuracy,
-            longitude: lon,
-            latitude: lat,
-            epfd_type: epfd,
-            raim: raim,
-            radio_status: radio,
-        })
+            >> spare: take_bits!(u8, 10)
+            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
+            >> radio: apply!(parse_radio, msg_type)
+            >> (BaseStationReport {
+                message_type: msg_type,
+                repeat_indicator: repeat,
+                mmsi: mmsi,
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: second,
+                fix_quality: accuracy,
+                longitude: lon,
+                latitude: lat,
+                epfd_type: epfd,
+                raim: raim,
+                radio_status: radio,
+            })
     ))
 );
 

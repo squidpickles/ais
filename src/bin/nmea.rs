@@ -23,7 +23,9 @@ fn main() {
             .split(b'\n')
             .map(|line| line.unwrap())
             .for_each(|line| {
-                parse_nmea_line(&line).unwrap_or(());
+                parse_nmea_line(&line).unwrap_or_else(|err| {
+                    eprintln!("{:?}", err);
+                });
             });
     }
 }

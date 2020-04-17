@@ -19,8 +19,8 @@ extern crate error_chain;
 extern crate nom;
 
 pub mod errors;
-pub mod sentence;
 pub mod messages;
+pub mod sentence;
 
 #[cfg(test)]
 mod tests {

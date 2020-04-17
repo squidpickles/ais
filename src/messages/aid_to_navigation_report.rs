@@ -1,8 +1,8 @@
-use errors::*;
-use nom::IResult;
-use super::{sixbit_to_ascii, AisMessageType, BitStream, signed_i32, u8_to_bool};
 use super::common::*;
 use super::navigation::*;
+use super::{signed_i32, sixbit_to_ascii, u8_to_bool, AisMessageType, BitStream};
+use errors::*;
+use nom::IResult;
 
 #[derive(Debug, PartialEq)]
 pub enum NavaidType {
@@ -140,40 +140,47 @@ pub fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], u
 named!(
     base_parser<AidToNavigationReport>,
     bits!(do_parse!(
-        msg_type: take_bits!(u8, 6) >> repeat: take_bits!(u8, 2) >> mmsi: take_bits!(u32, 30)
+        msg_type: take_bits!(u8, 6)
+            >> repeat: take_bits!(u8, 2)
+            >> mmsi: take_bits!(u32, 30)
             >> aid_type: map_res!(take_bits!(u8, 5), NavaidType::parse)
             >> name: apply!(parse_6bit_ascii, 120)
             >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
             >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
             >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
-            >> to_bow: take_bits!(u16, 9) >> to_stern: take_bits!(u16, 9)
-            >> to_port: take_bits!(u16, 6) >> to_sb: take_bits!(u16, 6)
+            >> to_bow: take_bits!(u16, 9)
+            >> to_stern: take_bits!(u16, 9)
+            >> to_port: take_bits!(u16, 6)
+            >> to_sb: take_bits!(u16, 6)
             >> epfd: map_res!(take_bits!(u8, 4), EpfdType::parse)
-            >> stamp: take_bits!(u8, 6) >> off_pos: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> regional: take_bits!(u8, 8) >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
+            >> stamp: take_bits!(u8, 6)
+            >> off_pos: map_res!(take_bits!(u8, 1), u8_to_bool)
+            >> regional: take_bits!(u8, 8)
+            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
             >> virtual_aid: map_res!(take_bits!(u8, 1), u8_to_bool)
             >> assigned_mode: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> spare: take_bits!(u8, 1) >> (AidToNavigationReport {
-            message_type: msg_type,
-            repeat_indicator: repeat,
-            mmsi: mmsi,
-            aid_type: aid_type,
-            name: name,
-            accuracy: accuracy,
-            longitude: lon,
-            latitude: lat,
-            dimension_to_bow: to_bow,
-            dimension_to_stern: to_stern,
-            dimension_to_port: to_port,
-            dimension_to_starboard: to_sb,
-            epfd_type: epfd,
-            utc_second: stamp,
-            off_position: off_pos,
-            regional_reserved: regional,
-            raim: raim,
-            virtual_aid: virtual_aid,
-            assigned_mode: assigned_mode,
-        })
+            >> spare: take_bits!(u8, 1)
+            >> (AidToNavigationReport {
+                message_type: msg_type,
+                repeat_indicator: repeat,
+                mmsi: mmsi,
+                aid_type: aid_type,
+                name: name,
+                accuracy: accuracy,
+                longitude: lon,
+                latitude: lat,
+                dimension_to_bow: to_bow,
+                dimension_to_stern: to_stern,
+                dimension_to_port: to_port,
+                dimension_to_starboard: to_sb,
+                epfd_type: epfd,
+                utc_second: stamp,
+                off_position: off_pos,
+                regional_reserved: regional,
+                raim: raim,
+                virtual_aid: virtual_aid,
+                assigned_mode: assigned_mode,
+            })
     ))
 );
 
@@ -196,5 +203,4 @@ mod tests {
         assert_eq!(base.epfd_type, Some(EpfdType::Surveyed));
         assert_eq!(base.raim, false);
     }
-
 }

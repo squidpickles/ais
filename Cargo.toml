@@ -5,5 +5,5 @@ authors = ["Kevin Rauwolf <sweetpea-git@tentacle.net>"]
 edition = "2018"
 
 [dependencies]
-error-chain = "*"
-nom = "<4"
+error-chain = "^0.12"
+nom = "^3.2"

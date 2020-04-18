@@ -1,5 +1,5 @@
 # AIS parser
-
+[![Build Status](https://travis-ci.org/squidpickles/ais.svg?branch=master)](https://travis-ci.org/squidpickles/ais)
 This is the beginning of a parser for [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) messages, written in Rust.
 
 ## Try it out

@@ -8,7 +8,7 @@ readme = "README.md"
 keywords = ["ais", "nmea"]
 categories = ["parser-implementations"]
 license = "Apache-2.0"
-homepage = "https://github.com/squidpickles/ais.git"
+repository = "https://github.com/squidpickles/ais.git"
 edition = "2018"
 
 [dependencies]

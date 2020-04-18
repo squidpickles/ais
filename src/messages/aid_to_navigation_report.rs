@@ -116,7 +116,7 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
     }
 }
 
-pub fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], usize), String> {
+fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], usize), String> {
     let chars = size / 6;
     if size % 6 != 0 {
         return IResult::Error(::nom::ErrorKind::LengthValue);
@@ -187,8 +187,8 @@ named!(
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unreadable_literal)]
-    use super::super::super::test_helpers::*;
     use super::*;
+    use crate::test_helpers::*;
 
     #[test]
     fn test_type21_not_extended() {

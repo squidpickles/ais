@@ -1,4 +1,4 @@
-//! Library errors
+//! Custom error types used by this crate
 
 use error_chain::*;
 error_chain! {

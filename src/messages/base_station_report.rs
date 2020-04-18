@@ -111,9 +111,9 @@ named!(
 mod tests {
     #![allow(clippy::zero_prefixed_literal)]
     #![allow(clippy::unreadable_literal)]
-    use super::super::super::test_helpers::*;
     use super::*;
     use crate::messages::radio_status::{SubMessage, SyncState};
+    use crate::test_helpers::*;
 
     #[test]
     fn test_type4() {

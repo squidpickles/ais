@@ -1,17 +1,31 @@
-//! AIS parsing library
+//! AIS parsing library, for reading AIS NMEA sentences
 //!
-//! This library provides tools for parsing AIS messages
+//! Given an NMEA stream, this library can extract various AIS message types in more detail.
+//!
 //! # Example:
 //! ```
-//! extern crate ais;
 //! use ais::sentence::AisSentence;
+//! use ais::messages::AisMessage;
 //!
-//! fn main() {
-//!     let test_message = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
-//!     let sentence = AisSentence::parse(test_message).unwrap();
-//!     assert_eq!(sentence.num_fragments, 1);
-//!     assert_eq!(sentence.channel, 'B');
+//! // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.
+//! let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
+//!
+//! let sentence = AisSentence::parse(line)?;
+//! // This sentence is complete, ie unfragmented
+//! assert_eq!(sentence.num_fragments, 1);
+//! // The data was transmitted on AIS channel B
+//! assert_eq!(sentence.channel, 'B');
+//!
+//! // Now we parse the message itself
+//! match sentence.message()? {
+//!     AisMessage::AidToNavigationReport(report) => {
+//!         assert_eq!(report.mmsi, 993692028);
+//!         assert_eq!(report.name, "SF OAK BAY BR VAIS E");
+//!         // There are a ton more fields available here
+//!     },
+//!     _ => panic!("Unexpected message type"),
 //! }
+//! # Ok::<(), ais::errors::Error>(())
 //! ```
 pub mod errors;
 pub mod messages;

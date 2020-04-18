@@ -1,3 +1,4 @@
+//! Specific AIS message types
 use crate::errors::*;
 use nom::*;
 use std::cmp;
@@ -9,10 +10,14 @@ mod navigation;
 pub mod position_report;
 mod radio_status;
 
+/// A type for storing number of bits. (AIS is a bit-oriented, rather than byte-oriented protocol.)
 pub type BitCount = usize;
+/// Denotes data to be parsed byte-by-byte
 pub type ByteStream<'a> = &'a [u8];
+/// Denotes data to be parsed bit-by-bit
 pub type BitStream<'a> = &'a [u8];
 
+/// Contains all structured messages recognized by this crate
 #[derive(Debug)]
 pub enum AisMessage {
     PositionReport(position_report::PositionReport),
@@ -20,13 +25,20 @@ pub enum AisMessage {
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
 }
 
+/// Trait that describes specific types of AIS messages
 pub trait AisMessageType<'a>: Sized {
+    /// The common name for the message type
     fn name(&self) -> &'static str;
+    /// Converts a raw AIS message into a structured, queryable version
     fn parse(data: &'a [u8]) -> Result<Self>;
 }
 
 named!(message_type<(&[u8], usize), u8>, peek!(take_bits!(u8, 6)));
 
+/// Given an unarmored bitstream (see `unarmor()` for details), this
+/// will return a message type object, if supported by this library
+/// and the message is valid.
+///
 pub fn parse(unarmored: BitStream) -> Result<AisMessage> {
     match message_type((unarmored, 0)) {
         IResult::Done(_, result) => match result {
@@ -78,6 +90,20 @@ fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32>
     )
 }
 
+/// Converts 8-bit ASCII (armored) into packed 6-bit (unarmored) sequences.
+///
+/// AIS data is bit-, not byte-oriented. AIS data is split into 6-bit chunks,
+/// which are then represented in ASCII as 8-bit characters. That process
+/// is called "armoring"
+///
+/// The `fill_bits` parameter is a count of bits needed to pad
+/// the complete message out to a 6-bit boundary. It should be supplied
+/// as part of the main sentence.
+///
+/// Returns an error if any of the individual bytes cannot be converted
+/// to a valid 6-bit chunk.
+///
+/// See https://gpsd.gitlab.io/gpsd/AIVDM.html for more details.
 pub fn unarmor(data: ByteStream, fill_bits: BitCount) -> Result<Vec<u8>> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);

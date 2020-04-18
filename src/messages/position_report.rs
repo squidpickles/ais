@@ -122,9 +122,9 @@ impl NavigationStatus {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unreadable_literal)]
-    use super::super::super::test_helpers::*;
     use super::*;
     use crate::messages::radio_status::{SubMessage, SyncState};
+    use crate::test_helpers::*;
 
     #[test]
     fn test_position() {

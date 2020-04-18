@@ -1,5 +1,6 @@
 //! Handlers for AIS messages at the NMEA sentence layer
 use crate::errors::{ErrorKind, *};
+use crate::messages::{self, AisMessage};
 use nom::*;
 
 #[derive(PartialEq, Debug)]
@@ -50,6 +51,12 @@ impl<'a> AisSentence<'a> {
         Ok(ais_msg)
     }
 
+    /// Parses the message frame inside the sentence, and returns it
+    pub fn message(&self) -> Result<AisMessage> {
+        let raw = messages::unarmor(self.data, self.fill_bit_count as usize)?;
+        Ok(messages::parse(&raw)?)
+    }
+
     /// Verifies the checksum
     fn check_checksum(sentence: &[u8], expected_checksum: u8) -> Result<u8> {
         let received_checksum = sentence.iter().fold(0u8, |acc, &item| acc ^ item);
@@ -82,30 +89,44 @@ named!(ais_data, take_until!(","));
 named!(fill_bit_count<u8>, verify!(u8_digit, |val: u8| val < 6));
 named!(data_end, tag!("*"));
 named!(checksum<u32>, verify!(hex_u32, |val: u32| val <= 0xff));
-named!(pub ais_sentence<AisSentence>, do_parse!(
-    typ: ais_type
-    >> tag!(",")
-    >> ns: num_fragments
-    >> tag!(",")
-    >> sn: fragment_number
-    >> tag!(",")
-    >> smid: sequential_message_id
-    >> tag!(",")
-    >> chan: channel
-    >> tag!(",")
-    >> data: ais_data
-    >> tag!(",")
-    >> fb: fill_bit_count
-    >> (AisSentence {msg_type: typ.into(), num_fragments: ns, fragment_number: sn, message_id: smid, channel: chan, data: data, fill_bit_count: fb})
-));
+named!(
+    ais_sentence<AisSentence>,
+    do_parse!(
+        typ: ais_type
+            >> tag!(",")
+            >> ns: num_fragments
+            >> tag!(",")
+            >> sn: fragment_number
+            >> tag!(",")
+            >> smid: sequential_message_id
+            >> tag!(",")
+            >> chan: channel
+            >> tag!(",")
+            >> data: ais_data
+            >> tag!(",")
+            >> fb: fill_bit_count
+            >> (AisSentence {
+                msg_type: typ.into(),
+                num_fragments: ns,
+                fragment_number: sn,
+                message_id: smid,
+                channel: chan,
+                data: data,
+                fill_bit_count: fb
+            })
+    )
+);
 
-named!(pub nmea_sentence<(&[u8], AisSentence, u8)>, do_parse!(
-    nmea_start
-    >> raw: peek!(take_until!("*"))
-    >> msg: terminated!(ais_sentence, data_end)
-    >> cs: checksum
-    >> (raw, msg, cs as u8)
-));
+named!(
+    nmea_sentence<(&[u8], AisSentence, u8)>,
+    do_parse!(
+        nmea_start
+            >> raw: peek!(take_until!("*"))
+            >> msg: terminated!(ais_sentence, data_end)
+            >> cs: checksum
+            >> (raw, msg, cs as u8)
+    )
+);
 
 #[cfg(test)]
 mod tests {

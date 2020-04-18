@@ -44,7 +44,7 @@ impl<'a> AisSentence<'a> {
         let (data, ais_msg, checksum) = match nmea_sentence(line) {
             IResult::Done(_, result) => result,
             IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
+            IResult::Incomplete(_) => return Err("incomplete AIS sentence".into()),
         };
         Self::check_checksum(data, checksum)?;
         Ok(ais_msg)
@@ -54,7 +54,7 @@ impl<'a> AisSentence<'a> {
     fn check_checksum(sentence: &[u8], expected_checksum: u8) -> Result<u8> {
         let received_checksum = sentence.iter().fold(0u8, |acc, &item| acc ^ item);
         if expected_checksum != received_checksum {
-            Err(ErrorKind::Checksum(expected_checksum, received_checksum))?
+            Err(ErrorKind::Checksum(expected_checksum, received_checksum).into())
         } else {
             Ok(received_checksum)
         }
@@ -109,11 +109,11 @@ named!(pub nmea_sentence<(&[u8], AisSentence, u8)>, do_parse!(
 
 #[cfg(test)]
 mod tests {
-    const GOOD_CHECKSUM: &'static [u8] =
+    const GOOD_CHECKSUM: &[u8] =
         b"!AIVDM,1,1,,A,E>kb9I99S@0`8@:9ah;0TahI7@@;V4=v:nv;h00003vP100,0*7A";
-    const BAD_CHECKSUM: &'static [u8] =
+    const BAD_CHECKSUM: &[u8] =
         b"!AIVDM,1,1,,A,E>kb9I99S@0`8@:9ah;0TahI7@@;V4=v:nv;h00003vP100,0*8D";
-    const BAD_STRUCTURE: &'static [u8] =
+    const BAD_STRUCTURE: &[u8] =
         b"!AIVDM,1,1,,A,E>kb9I99S@0`8@:9ah;0,TahI7@@;V4=v:nv;h00003vP100,0*8D";
     const AIS_START_IDX: usize = 14;
     const AIS_END_IDX: usize = 61;

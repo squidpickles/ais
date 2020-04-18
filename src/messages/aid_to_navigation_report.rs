@@ -111,7 +111,7 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
         match base_parser(data) {
             IResult::Done(_, result) => Ok(result),
             IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
+            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
         }
     }
 }
@@ -132,7 +132,7 @@ pub fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], u
         });
     }
     match ::std::str::from_utf8(&converted) {
-        Ok(val) => IResult::Done(offset, val.trim_right().to_string()),
+        Ok(val) => IResult::Done(offset, val.trim_end().to_string()),
         Err(_) => IResult::Error(::nom::ErrorKind::AlphaNumeric),
     }
 }
@@ -186,6 +186,8 @@ named!(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal)]
+    use super::super::super::test_helpers::*;
     use super::*;
 
     #[test]
@@ -198,8 +200,8 @@ mod tests {
         assert_eq!(base.mmsi, 993692005);
         assert_eq!(base.name, "SF APP TSS VAIS 3N");
         assert_eq!(base.accuracy, Accuracy::Unaugmented);
-        assert_eq!(base.longitude, Some(-123.35972));
-        assert_eq!(base.latitude, Some(38.124718));
+        f32_equal_naive(base.longitude.unwrap(), -123.35972);
+        f32_equal_naive(base.latitude.unwrap(), 38.124718);
         assert_eq!(base.epfd_type, Some(EpfdType::Surveyed));
         assert_eq!(base.raim, false);
     }

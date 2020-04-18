@@ -2,7 +2,7 @@ use errors::*;
 
 pub fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
     match data {
-        0...1022 => Ok(Some(data as f32 / 10.0)),
+        0..=1022 => Ok(Some(data as f32 / 10.0)),
         1023 => Ok(None),
         _ => Err(format!("Invalid speed over ground: {}", data).into()),
     }
@@ -10,17 +10,17 @@ pub fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
 
 pub fn parse_longitude(data: i32) -> Result<Option<f32>> {
     match data {
-        -108000000...108000000 => Ok(Some(data as f32 / 600000.0)),
-        108600000 => Ok(None),
-        _ => Err(format!("Invalid longitude: {}", data as f32 / 600000.0).into()),
+        -108_000_000..=108_000_000 => Ok(Some(data as f32 / 600_000.0)),
+        108_600_000 => Ok(None),
+        _ => Err(format!("Invalid longitude: {}", data as f32 / 600_000.0).into()),
     }
 }
 
 pub fn parse_latitude(data: i32) -> Result<Option<f32>> {
     match data {
-        -54000000...54000000 => Ok(Some(data as f32 / 600000.0)),
-        54600000 => Ok(None),
-        _ => Err(format!("Invalid latitude: {}", data as f32 / 600000.0).into()),
+        -54_000_000..=54_000_000 => Ok(Some(data as f32 / 600_000.0)),
+        54_600_000 => Ok(None),
+        _ => Err(format!("Invalid latitude: {}", data as f32 / 600_000.0).into()),
     }
 }
 
@@ -33,7 +33,7 @@ pub fn parse_cog(data: u16) -> Option<f32> {
 
 pub fn parse_heading(data: u16) -> Result<Option<u16>> {
     match data {
-        0...359 => Ok(Some(data)),
+        0..=359 => Ok(Some(data)),
         511 => Ok(None),
         _ => Err(format!("Invalid heading: {}", data).into()),
     }
@@ -71,14 +71,13 @@ impl RateOfTurn {
         #[allow(overflowing_literals)]
         match data as i8 {
             128 => None, // does indeed encode as 0x80
-            -127...127 => Some(RateOfTurn { raw: data as i8 }),
-            _ => unreachable!(),
+            -127..=127 => Some(RateOfTurn { raw: data as i8 }),
         }
     }
 
     pub fn rate(&self) -> Option<f32> {
         match self.raw {
-            -126...126 => Some((self.raw as f32 / 4.733).powi(2)),
+            -126..=126 => Some((self.raw as f32 / 4.733).powi(2)),
             -127 => None,
             127 => None,
             _ => unreachable!(),
@@ -88,8 +87,8 @@ impl RateOfTurn {
     pub fn direction(&self) -> Option<Direction> {
         match self.raw {
             0 => None,
-            1...127 => Some(Direction::Starboard),
-            -127...-1 => Some(Direction::Port),
+            1..=127 => Some(Direction::Starboard),
+            -127..=-1 => Some(Direction::Port),
             _ => unreachable!(),
         }
     }

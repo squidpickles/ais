@@ -33,37 +33,37 @@ impl<'a> AisMessageType<'a> for BaseStationReport {
         match base_parser(data) {
             IResult::Done(_, result) => Ok(result),
             IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
+            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
         }
     }
 }
 
 named!(year_parser<(&[u8], usize), Option<u16>>, map_res!(take_bits!(u16, 14), |year| match year {
     0 => Ok(None),
-    1...9999 => Ok(Some(year)),
+    1..=9999 => Ok(Some(year)),
     _ => Err("Invalid year"),
 }));
 
 named!(month_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 4), |month| match month {
     0 => Ok(None),
-    1...12 => Ok(Some(month)),
+    1..=12 => Ok(Some(month)),
     _ => Err("Invalid month"),
 }));
 
 named!(day_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 5), |day| match day {
     0 => Ok(None),
-    1...31 => Ok(Some(day)),
+    1..=31 => Ok(Some(day)),
     _ => Err("Invalid day"),
 }));
 
 named!(hour_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 5), |hour| match hour {
-    0...23 => Ok(Some(hour)),
+    0..=23 => Ok(Some(hour)),
     24 => Ok(None),
     _ => Err("Invalid hour"),
 }));
 
 named!(minsec_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 6), |min_sec| match min_sec {
-    0...59 => Ok(Some(min_sec)),
+    0..=59 => Ok(Some(min_sec)),
     60 => Ok(None),
     _ => Err("Invalid minute/second"),
 }));
@@ -109,6 +109,9 @@ named!(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::zero_prefixed_literal)]
+    #![allow(clippy::unreadable_literal)]
+    use super::super::super::test_helpers::*;
     use super::*;
     use messages::radio_status::{SubMessage, SyncState};
 
@@ -127,8 +130,8 @@ mod tests {
         assert_eq!(base.minute, Some(15));
         assert_eq!(base.second, Some(11));
         assert_eq!(base.fix_quality, Accuracy::DGPS);
-        assert_eq!(base.longitude, Some(-122.464775));
-        assert_eq!(base.latitude, Some(37.794308));
+        f32_equal_naive(base.longitude.unwrap(), -122.464775);
+        f32_equal_naive(base.latitude.unwrap(), 37.794308);
         assert_eq!(base.epfd_type, None);
         assert_eq!(base.raim, true);
         if let RadioStatus::Sotdma(radio_status) = base.radio_status {
@@ -155,8 +158,8 @@ mod tests {
         assert_eq!(base.minute, Some(57));
         assert_eq!(base.second, Some(39));
         assert_eq!(base.fix_quality, Accuracy::DGPS);
-        assert_eq!(base.longitude, Some(-76.352362));
-        assert_eq!(base.latitude, Some(36.883767));
+        assert_eq!(base.longitude, Some(-76.35236));
+        assert_eq!(base.latitude, Some(36.883766));
         assert_eq!(base.epfd_type, Some(EpfdType::Surveyed));
         assert_eq!(base.raim, false);
         if let RadioStatus::Sotdma(radio_status) = base.radio_status {

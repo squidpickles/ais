@@ -32,7 +32,7 @@ impl<'a> AisMessageType<'a> for PositionReport {
         match position_parser(data) {
             IResult::Done(_, result) => Ok(result),
             IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence")?,
+            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
         }
     }
 }
@@ -121,6 +121,8 @@ impl NavigationStatus {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal)]
+    use super::super::super::test_helpers::*;
     use super::*;
     use messages::radio_status::{SubMessage, SyncState};
 
@@ -137,12 +139,12 @@ mod tests {
             Some(NavigationStatus::UnderWayUsingEngine)
         );
         let rate_of_turn = position.rate_of_turn.unwrap();
-        assert_eq!(rate_of_turn.rate().unwrap().ceil(), 3.0);
+        f32_equal_naive(rate_of_turn.rate().unwrap().ceil(), 3.0);
         assert_eq!(rate_of_turn.direction(), Some(Direction::Port));
         assert_eq!(position.speed_over_ground, Some(13.9));
         assert_eq!(position.position_accuracy, Accuracy::Unaugmented);
-        assert_eq!(position.longitude.unwrap().ceil(), 12.0);
-        assert_eq!(position.latitude.unwrap().ceil(), 58.0);
+        f32_equal_naive(position.longitude.unwrap().ceil(), 12.0);
+        f32_equal_naive(position.latitude.unwrap().ceil(), 58.0);
         assert_eq!(position.course_over_ground, Some(40.4));
         assert_eq!(position.true_heading, Some(41));
         assert_eq!(position.timestamp, 53);
@@ -167,7 +169,7 @@ mod tests {
         let bytestream = b"16SteH0P00Jt63hHaa6SagvJ087r";
         let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
-        assert_eq!(position.longitude.unwrap(), -70.7582);
+        f32_equal_naive(position.longitude.unwrap(), -70.7582);
         if let RadioStatus::Sotdma(radio_status) = position.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 2);
@@ -189,9 +191,9 @@ mod tests {
             position.navigation_status.unwrap(),
             NavigationStatus::Moored
         );
-        assert_eq!(position.longitude.unwrap(), -76.32753);
-        assert_eq!(position.latitude.unwrap(), 36.91);
-        assert_eq!(position.course_over_ground.unwrap(), 252.0);
+        f32_equal_naive(position.longitude.unwrap(), -76.32753);
+        f32_equal_naive(position.latitude.unwrap(), 36.91);
+        f32_equal_naive(position.course_over_ground.unwrap(), 252.0);
         assert_eq!(position.true_heading.unwrap(), 352);
         assert_eq!(position.timestamp, 35);
         if let RadioStatus::Itdma(radio_status) = position.radio_status {

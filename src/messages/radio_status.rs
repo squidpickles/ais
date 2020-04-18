@@ -95,7 +95,7 @@ impl SotdmaMessage {
         match Self::parse_impl(data) {
             IResult::Done(_, result) => Ok(result),
             IResult::Error(err) => Err(err).chain_err(|| "parsing SOTDMA status")?,
-            IResult::Incomplete(_) => Err("incomplete SOTDMA status")?,
+            IResult::Incomplete(_) => Err("incomplete SOTDMA status".into()),
         }
     }
     named!(parse_impl<RadioStatus>, bits!(Self::parser));
@@ -126,7 +126,7 @@ impl ItdmaMessage {
         match Self::parse_impl(data) {
             IResult::Done(_, result) => Ok(result),
             IResult::Error(err) => Err(err).chain_err(|| "parsing ITDMA status")?,
-            IResult::Incomplete(_) => Err("incomplete ITDMA status")?,
+            IResult::Incomplete(_) => Err("incomplete ITDMA status".into()),
         }
     }
 

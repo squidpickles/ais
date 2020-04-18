@@ -2,6 +2,13 @@
 name = "ais"
 version = "0.1.0"
 authors = ["Kevin Rauwolf <sweetpea-git@tentacle.net>"]
+description = "An AIS parser library"
+homepage = "https://github.com/squidpickles/ais"
+readme = "README.md"
+keywords = ["ais", "nmea"]
+categories = ["parser-implementations"]
+license = "Apache-2.0"
+homepage = "https://github.com/squidpickles/ais.git"
 edition = "2018"
 
 [dependencies]

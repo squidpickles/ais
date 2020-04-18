@@ -2,8 +2,8 @@ use super::common::*;
 use super::navigation::*;
 use super::radio_status::{parse_radio, RadioStatus};
 use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
-use errors::*;
-use nom::IResult;
+use crate::errors::*;
+use nom::*;
 
 #[derive(Debug)]
 pub struct BaseStationReport {
@@ -113,12 +113,12 @@ mod tests {
     #![allow(clippy::unreadable_literal)]
     use super::super::super::test_helpers::*;
     use super::*;
-    use messages::radio_status::{SubMessage, SyncState};
+    use crate::messages::radio_status::{SubMessage, SyncState};
 
     #[test]
     fn test_type4() {
         let bytestream = b"403OtVAv7=i?;o?IaHE`4Iw020S:";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let base = BaseStationReport::parse(&bitstream).unwrap();
         assert_eq!(base.message_type, 4);
         assert_eq!(base.repeat_indicator, 0);
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn test_type4_2() {
         let bytestream = b"403OviQuMGCqWrRO9>E6fE700@GO";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let base = BaseStationReport::parse(&bitstream).unwrap();
         assert_eq!(base.message_type, 4);
         assert_eq!(base.repeat_indicator, 0);

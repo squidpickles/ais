@@ -1,4 +1,6 @@
 //! Library errors
+
+use error_chain::*;
 error_chain! {
     errors {
         /// Incorrect NMEA sentence format

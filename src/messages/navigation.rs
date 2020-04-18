@@ -1,4 +1,4 @@
-use errors::*;
+use crate::errors::*;
 
 pub fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
     match data {

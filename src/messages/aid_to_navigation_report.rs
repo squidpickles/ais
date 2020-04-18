@@ -1,8 +1,8 @@
 use super::common::*;
 use super::navigation::*;
 use super::{signed_i32, sixbit_to_ascii, u8_to_bool, AisMessageType, BitStream};
-use errors::*;
-use nom::IResult;
+use crate::errors::*;
+use nom::*;
 
 #[derive(Debug, PartialEq)]
 pub enum NavaidType {
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_type21_not_extended() {
         let bytestream = b"E>kb9II9S@0`8@:9ah;0TahIW@@;Uafb:r5Ih00003vP100";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let base = AidToNavigationReport::parse(&bitstream).unwrap();
         assert_eq!(base.message_type, 21);
         assert_eq!(base.repeat_indicator, 0);

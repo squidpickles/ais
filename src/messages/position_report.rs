@@ -1,8 +1,8 @@
 use super::navigation::*;
 use super::radio_status::{parse_radio, RadioStatus};
 use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
-use errors::*;
-use nom::IResult;
+use crate::errors::*;
+use nom::*;
 
 #[derive(Debug)]
 pub struct PositionReport {
@@ -124,12 +124,12 @@ mod tests {
     #![allow(clippy::unreadable_literal)]
     use super::super::super::test_helpers::*;
     use super::*;
-    use messages::radio_status::{SubMessage, SyncState};
+    use crate::messages::radio_status::{SubMessage, SyncState};
 
     #[test]
     fn test_position() {
         let bytestream = b"13u?etPv2;0n:dDPwUM1U1Cb069D";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
         assert_eq!(position.message_type, 1);
         assert_eq!(position.repeat_indicator, 0);
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_type1() {
         let bytestream = b"16SteH0P00Jt63hHaa6SagvJ087r";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
         f32_equal_naive(position.longitude.unwrap(), -70.7582);
         if let RadioStatus::Sotdma(radio_status) = position.radio_status {
@@ -183,7 +183,7 @@ mod tests {
     fn test_type3() {
         // FIXME: broken test
         let bytestream = b"38Id705000rRVJhE7cl9n;160000";
-        let bitstream = ::messages::unarmor(bytestream, 0).unwrap();
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
         assert_eq!(position.message_type, 3);
         assert_eq!(position.mmsi, 563808000);

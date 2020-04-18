@@ -13,11 +13,6 @@
 //!     assert_eq!(sentence.channel, 'B');
 //! }
 //! ```
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate nom;
-
 pub mod errors;
 pub mod messages;
 pub mod sentence;

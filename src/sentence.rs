@@ -1,6 +1,6 @@
 //! Handlers for AIS messages at the NMEA sentence layer
-use errors::*;
-use nom::{anychar, digit, hex_u32, IResult};
+use crate::errors::{ErrorKind, *};
+use nom::*;
 
 #[derive(PartialEq, Debug)]
 /// Represents the NMEA sentence type of an AIS message

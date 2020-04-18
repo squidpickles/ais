@@ -1,6 +1,6 @@
 use super::BitStream;
-use errors::*;
-use nom::IResult;
+use crate::errors::*;
+use nom::*;
 
 #[derive(Debug, PartialEq)]
 pub enum RadioStatus {

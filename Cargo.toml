@@ -2,7 +2,8 @@
 name = "ais"
 version = "0.1.0"
 authors = ["Kevin Rauwolf <sweetpea-git@tentacle.net>"]
+edition = "2018"
 
 [dependencies]
 error-chain = "*"
-nom = "*"
+nom = "<4"

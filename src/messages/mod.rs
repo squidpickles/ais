@@ -1,6 +1,8 @@
 //! Specific AIS message types
 use crate::errors::*;
-use nom::*;
+use nom::bits::{bits, complete::take as take_bits};
+use nom::combinator::peek;
+use nom::IResult;
 use std::cmp;
 
 pub mod aid_to_navigation_report;
@@ -9,13 +11,6 @@ mod common;
 mod navigation;
 pub mod position_report;
 mod radio_status;
-
-/// A type for storing number of bits. (AIS is a bit-oriented, rather than byte-oriented protocol.)
-pub type BitCount = usize;
-/// Denotes data to be parsed byte-by-byte
-pub type ByteStream<'a> = &'a [u8];
-/// Denotes data to be parsed bit-by-bit
-pub type BitStream<'a> = &'a [u8];
 
 /// Contains all structured messages recognized by this crate
 #[derive(Debug)]
@@ -33,28 +28,27 @@ pub trait AisMessageType<'a>: Sized {
     fn parse(data: &'a [u8]) -> Result<Self>;
 }
 
-named!(message_type<(&[u8], usize), u8>, peek!(take_bits!(u8, 6)));
+fn message_type(data: &[u8]) -> IResult<&[u8], u8> {
+    bits(move |data| -> IResult<_, _> { peek(take_bits(6u8))(data) })(data)
+}
 
 /// Given an unarmored bitstream (see `unarmor()` for details), this
 /// will return a message type object, if supported by this library
 /// and the message is valid.
 ///
-pub fn parse(unarmored: BitStream) -> Result<AisMessage> {
-    match message_type((unarmored, 0)) {
-        IResult::Done(_, result) => match result {
-            1..=3 => Ok(AisMessage::PositionReport(
-                position_report::PositionReport::parse(&unarmored)?,
-            )),
-            4 => Ok(AisMessage::BaseStationReport(
-                base_station_report::BaseStationReport::parse(&unarmored)?,
-            )),
-            21 => Ok(AisMessage::AidToNavigationReport(
-                aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
-            )),
-            _ => Err(format!("Unimplemented type: {}", result).into()),
-        },
-        IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-        IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
+pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
+    let (_, result) = message_type(unarmored)?;
+    match result {
+        1..=3 => Ok(AisMessage::PositionReport(
+            position_report::PositionReport::parse(&unarmored)?,
+        )),
+        4 => Ok(AisMessage::BaseStationReport(
+            base_station_report::BaseStationReport::parse(&unarmored)?,
+        )),
+        21 => Ok(AisMessage::AidToNavigationReport(
+            aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
+        )),
+        _ => Err(format!("Unimplemented type: {}", result).into()),
     }
 }
 
@@ -78,16 +72,15 @@ fn u8_to_bool(data: u8) -> Result<bool> {
 
 fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
     assert!(len <= ::std::mem::size_of::<i32>() * 8);
-    let parsed = try_parse!(input, take_bits!(i32, len));
-    let input = parsed.1;
+    let (input, num) = take_bits::<_, i32, _, (_, _)>(len)(input)?;
     let mask = !0i32 << len;
-    IResult::Done(
-        parsed.0,
-        match (input << (32 - len)).leading_zeros() {
-            0 => input | mask,
-            _ => !mask & input,
+    Ok((
+        input,
+        match (num << (32 - len)).leading_zeros() {
+            0 => num | mask,
+            _ => !mask & num,
         },
-    )
+    ))
 }
 
 /// Converts 8-bit ASCII (armored) into packed 6-bit (unarmored) sequences.
@@ -104,7 +97,7 @@ fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32>
 /// to a valid 6-bit chunk.
 ///
 /// See https://gpsd.gitlab.io/gpsd/AIVDM.html for more details.
-pub fn unarmor(data: ByteStream, fill_bits: BitCount) -> Result<Vec<u8>> {
+pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
     let mut output = vec![0; byte_count];

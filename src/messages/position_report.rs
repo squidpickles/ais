@@ -1,8 +1,10 @@
 use super::navigation::*;
 use super::radio_status::{parse_radio, RadioStatus};
-use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
+use super::{signed_i32, u8_to_bool, AisMessageType};
 use crate::errors::*;
-use nom::*;
+use nom::bits::{bits, complete::take as take_bits};
+use nom::combinator::{map, map_res};
+use nom::IResult;
 
 #[derive(Debug)]
 pub struct PositionReport {
@@ -28,55 +30,59 @@ impl<'a> AisMessageType<'a> for PositionReport {
         "Position Report Class A"
     }
 
-    fn parse(data: BitStream) -> Result<Self> {
-        match position_parser(data) {
-            IResult::Done(_, result) => Ok(result),
-            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
-        }
+    fn parse(data: &[u8]) -> Result<Self> {
+        let (_, report) = base_parser(data)?;
+        Ok(report)
     }
 }
 
-named!(
-    position_parser<PositionReport>,
-    bits!(do_parse!(
-        msg_type: take_bits!(u8, 6)
-            >> repeat: take_bits!(u8, 2)
-            >> mmsi: take_bits!(u32, 30)
-            >> nav_status: map_res!(take_bits!(u8, 4), NavigationStatus::parse)
-            >> rot: take_bits!(u8, 8)
-            >> sog: map_res!(take_bits!(u16, 10), parse_speed_over_ground)
-            >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
-            >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
-            >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
-            >> cog: take_bits!(u16, 12)
-            >> hdg: map_res!(take_bits!(u16, 9), parse_heading)
-            >> stamp: take_bits!(u8, 6)
-            >> maneuver: take_bits!(u8, 2)
-            >> spare: take_bits!(u8, 3)
-            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> radio: apply!(parse_radio, msg_type)
-            >> (PositionReport {
-                message_type: msg_type,
-                repeat_indicator: repeat,
-                mmsi: mmsi,
-                navigation_status: nav_status,
-                rate_of_turn: RateOfTurn::parse(rot),
-                speed_over_ground: sog,
-                position_accuracy: accuracy,
-                longitude: lon,
-                latitude: lat,
-                course_over_ground: parse_cog(cog),
-                true_heading: hdg,
-                timestamp: stamp,
-                maneuver_indicator: None,
-                raim: raim,
-                radio_status: radio,
-            })
-    ))
-);
+fn base_parser(data: &[u8]) -> IResult<&[u8], PositionReport> {
+    bits(move |data| -> IResult<_, _> {
+        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
+        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, navigation_status) =
+            map_res(take_bits::<_, _, _, (_, _)>(4u8), NavigationStatus::parse)(data)?;
+        let (data, rate_of_turn) = map(take_bits::<_, _, _, (_, _)>(8u8), RateOfTurn::parse)(data)?;
+        let (data, speed_over_ground) =
+            map_res(take_bits::<_, _, _, (_, _)>(10u16), parse_speed_over_ground)(data)?;
+        let (data, position_accuracy) =
+            map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
+        let (data, course_over_ground) = map(take_bits::<_, _, _, (_, _)>(12u16), parse_cog)(data)?;
+        let (data, true_heading) =
+            map_res(take_bits::<_, _, _, (_, _)>(9u16), parse_heading)(data)?;
+        let (data, timestamp) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, maneuver_indicator) =
+            map_res(take_bits::<_, _, _, (_, _)>(2u8), ManeuverIndicator::parse)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(3u8)(data)?;
+        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, radio_status) = parse_radio(data, message_type)?;
+        Ok((
+            data,
+            PositionReport {
+                message_type,
+                repeat_indicator,
+                mmsi,
+                navigation_status,
+                rate_of_turn,
+                speed_over_ground,
+                position_accuracy,
+                longitude,
+                latitude,
+                course_over_ground,
+                true_heading,
+                timestamp,
+                maneuver_indicator,
+                raim,
+                radio_status,
+            },
+        ))
+    })(data)
+}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum NavigationStatus {
     UnderWayUsingEngine,
     AtAnchor,

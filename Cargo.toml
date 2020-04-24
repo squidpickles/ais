@@ -14,7 +14,7 @@ edition = "2018"
 
 [dependencies]
 error-chain = "^0.12"
-nom = "^3.2"
+nom = "6.0.0-alpha1"
 
 [badges]
 travis-ci = { repository = "squidpickles/ais", branch = "master" }

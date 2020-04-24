@@ -15,3 +15,15 @@ error_chain! {
         }
     }
 }
+
+impl From<nom::Err<&[u8]>> for Error {
+    fn from(err: nom::Err<&[u8]>) -> Self {
+        err.to_string().into()
+    }
+}
+
+impl From<nom::Err<(&[u8], nom::error::ErrorKind)>> for Error {
+    fn from(err: nom::Err<(&[u8], nom::error::ErrorKind)>) -> Self {
+        err.to_string().into()
+    }
+}

@@ -1,8 +1,12 @@
 use super::common::*;
 use super::navigation::*;
-use super::{signed_i32, sixbit_to_ascii, u8_to_bool, AisMessageType, BitStream};
+use super::{signed_i32, sixbit_to_ascii, u8_to_bool, AisMessageType};
 use crate::errors::*;
-use nom::*;
+use nom::bits::{bits, complete::take as take_bits};
+use nom::combinator::map_res;
+use nom::error::ErrorKind;
+use nom::multi::count;
+use nom::IResult;
 
 #[derive(Debug, PartialEq)]
 pub enum NavaidType {
@@ -107,82 +111,72 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
         "Aid to Navigation Report"
     }
 
-    fn parse(data: BitStream) -> Result<Self> {
-        match base_parser(data) {
-            IResult::Done(_, result) => Ok(result),
-            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
-        }
+    fn parse(data: &[u8]) -> Result<Self> {
+        let (_, report) = base_parser(data)?;
+        Ok(report)
     }
 }
 
 fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], usize), String> {
-    let chars = size / 6;
-    if size % 6 != 0 {
-        return IResult::Error(::nom::ErrorKind::LengthValue);
-    }
-    let mut converted: Vec<u8> = Vec::with_capacity(chars);
-    let mut offset = input;
-    for _ in 0..chars {
-        let (new_offset, byte) = try_parse!(offset, take_bits!(u8, 6));
-        offset = new_offset;
-        converted.push(match sixbit_to_ascii(byte) {
-            Ok(ascii) => ascii,
-            Err(_) => return IResult::Error(::nom::ErrorKind::AlphaNumeric),
-        });
-    }
-    match ::std::str::from_utf8(&converted) {
-        Ok(val) => IResult::Done(offset, val.trim_end().to_string()),
-        Err(_) => IResult::Error(::nom::ErrorKind::AlphaNumeric),
+    let char_count = size / 6;
+    let (input, bytes) = count(
+        map_res(take_bits::<_, _, _, (_, _)>(6u8), sixbit_to_ascii),
+        char_count,
+    )(input)?;
+    match ::std::str::from_utf8(&bytes) {
+        Ok(val) => Ok((input, val.trim_end().to_string())),
+        Err(_) => Err(nom::Err::Error((input, ErrorKind::AlphaNumeric))),
     }
 }
 
-named!(
-    base_parser<AidToNavigationReport>,
-    bits!(do_parse!(
-        msg_type: take_bits!(u8, 6)
-            >> repeat: take_bits!(u8, 2)
-            >> mmsi: take_bits!(u32, 30)
-            >> aid_type: map_res!(take_bits!(u8, 5), NavaidType::parse)
-            >> name: apply!(parse_6bit_ascii, 120)
-            >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
-            >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
-            >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
-            >> to_bow: take_bits!(u16, 9)
-            >> to_stern: take_bits!(u16, 9)
-            >> to_port: take_bits!(u16, 6)
-            >> to_sb: take_bits!(u16, 6)
-            >> epfd: map_res!(take_bits!(u8, 4), EpfdType::parse)
-            >> stamp: take_bits!(u8, 6)
-            >> off_pos: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> regional: take_bits!(u8, 8)
-            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> virtual_aid: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> assigned_mode: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> spare: take_bits!(u8, 1)
-            >> (AidToNavigationReport {
-                message_type: msg_type,
-                repeat_indicator: repeat,
-                mmsi: mmsi,
-                aid_type: aid_type,
-                name: name,
-                accuracy: accuracy,
-                longitude: lon,
-                latitude: lat,
-                dimension_to_bow: to_bow,
-                dimension_to_stern: to_stern,
-                dimension_to_port: to_port,
-                dimension_to_starboard: to_sb,
-                epfd_type: epfd,
-                utc_second: stamp,
-                off_position: off_pos,
-                regional_reserved: regional,
-                raim: raim,
-                virtual_aid: virtual_aid,
-                assigned_mode: assigned_mode,
-            })
-    ))
-);
+fn base_parser(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
+    bits(move |data| -> IResult<_, _> {
+        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
+        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, aid_type) = map_res(take_bits::<_, _, _, (_, _)>(5u8), NavaidType::parse)(data)?;
+        let (data, name) = parse_6bit_ascii(data, 120)?;
+        let (data, accuracy) = map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
+        let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
+        let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
+        let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
+        let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
+        let (data, epfd_type) = map_res(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, utc_second) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, off_position) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, regional_reserved) = take_bits::<_, _, _, (_, _)>(8u8)(data)?;
+        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, virtual_aid) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, assigned_mode) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(1u8)(data)?;
+        Ok((
+            data,
+            AidToNavigationReport {
+                message_type,
+                repeat_indicator,
+                mmsi,
+                aid_type,
+                name,
+                accuracy,
+                longitude,
+                latitude,
+                dimension_to_bow,
+                dimension_to_stern,
+                dimension_to_port,
+                dimension_to_starboard,
+                epfd_type,
+                utc_second,
+                off_position,
+                regional_reserved,
+                raim,
+                virtual_aid,
+                assigned_mode,
+            },
+        ))
+    })(data)
+}
 
 #[cfg(test)]
 mod tests {

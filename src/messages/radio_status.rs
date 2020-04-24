@@ -1,6 +1,9 @@
-use super::BitStream;
-use crate::errors::*;
-use nom::*;
+use super::u8_to_bool;
+use crate::errors::Result;
+use nom::bits::complete::take as take_bits;
+use nom::combinator::map_res;
+use nom::error::ErrorKind;
+use nom::IResult;
 
 #[derive(Debug, PartialEq)]
 pub enum RadioStatus {
@@ -8,17 +11,7 @@ pub enum RadioStatus {
     Itdma(ItdmaMessage),
 }
 
-impl RadioStatus {
-    pub fn parse_sotdma(data: BitStream) -> Result<Self> {
-        Ok(SotdmaMessage::parse(data)?)
-    }
-
-    pub fn parse_itdma(data: BitStream) -> Result<Self> {
-        Ok(ItdmaMessage::parse(data)?)
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum SyncState {
     UtcDirect,
     UtcIndirect,
@@ -49,38 +42,36 @@ pub enum SubMessage {
 impl SubMessage {
     fn parse(input: (&[u8], usize), slot_timeout: u8) -> IResult<(&[u8], usize), SubMessage> {
         match slot_timeout {
-            0 => {
-                let result = try_parse!(input, Self::slot_offset);
-                IResult::Done(result.0, SubMessage::SlotOffset(result.1))
-            }
-            1 => {
-                let result = try_parse!(input, Self::utc_hour_and_minute);
-                IResult::Done(
-                    result.0,
-                    SubMessage::UtcHourAndMinute((result.1).0, (result.1).1),
-                )
-            }
+            0 => Self::slot_offset(input),
+            1 => Self::utc_hour_and_minute(input),
             2 | 4 | 6 => {
-                let result = try_parse!(input, Self::subm_u16);
-                IResult::Done(result.0, SubMessage::SlotNumber(result.1))
+                let (data, slot_number) = Self::subm_u16(input)?;
+                Ok((data, SubMessage::SlotNumber(slot_number)))
             }
             3 | 5 | 7 => {
-                let result = try_parse!(input, Self::subm_u16);
-                IResult::Done(result.0, SubMessage::ReceivedStations(result.1))
+                let (data, slot_number) = Self::subm_u16(input)?;
+                Ok((data, SubMessage::ReceivedStations(slot_number)))
             }
-            _ => unreachable!(),
+            _ => Err(nom::Err::Error((input, ErrorKind::Digit))),
         }
     }
 
-    named!(utc_hour_and_minute<(&[u8], usize), (u8, u8)>, do_parse!(
-        h: take_bits!(u8, 5) >>
-        take_bits!(u8, 1) >>
-        m: take_bits!(u8, 6) >>
-        take_bits!(u8, 2) >>
-        (h, m)
-    ));
-    named!(slot_offset<(&[u8], usize), i16>, take_bits!(i16, 14));
-    named!(subm_u16<(&[u8], usize), u16>, take_bits!(u16, 14));
+    fn utc_hour_and_minute(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
+        let (data, hour) = take_bits::<_, _, _, (_, _)>(5u8)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(1u8)(data)?;
+        let (data, minute) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(2u8)(data)?;
+        Ok((data, Self::UtcHourAndMinute(hour, minute)))
+    }
+
+    fn slot_offset(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
+        let (data, slot_offset) = take_bits::<_, _, _, (_, _)>(14u16)(data)?;
+        Ok((data, Self::SlotOffset(slot_offset)))
+    }
+
+    fn subm_u16(data: (&[u8], usize)) -> IResult<(&[u8], usize), u16> {
+        take_bits::<_, _, _, (_, _)>(14u16)(data)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -91,26 +82,20 @@ pub struct SotdmaMessage {
 }
 
 impl SotdmaMessage {
-    pub fn parse(data: BitStream) -> Result<RadioStatus> {
-        match Self::parse_impl(data) {
-            IResult::Done(_, result) => Ok(result),
-            IResult::Error(err) => Err(err).chain_err(|| "parsing SOTDMA status")?,
-            IResult::Incomplete(_) => Err("incomplete SOTDMA status".into()),
-        }
+    pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), RadioStatus> {
+        let (data, sync_state) =
+            map_res(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
+        let (data, slot_timeout) = take_bits::<_, _, _, (_, _)>(3u8)(data)?;
+        let (data, sub_message) = SubMessage::parse(data, slot_timeout)?;
+        Ok((
+            data,
+            RadioStatus::Sotdma(Self {
+                sync_state,
+                slot_timeout,
+                sub_message,
+            }),
+        ))
     }
-    named!(parse_impl<RadioStatus>, bits!(Self::parser));
-
-    named!(
-        pub parser<(&[u8], usize), RadioStatus>,
-        do_parse!(
-            sync_state: map_res!(take_bits!(u8, 2), SyncState::parse) >> slot_timeout: take_bits!(u8, 3)
-                >> sub_message: apply!(SubMessage::parse, slot_timeout) >> (RadioStatus::Sotdma(Self {
-                sync_state: sync_state,
-                slot_timeout: slot_timeout,
-                sub_message: sub_message,
-            }))
-        )
-    );
 }
 
 #[derive(Debug, PartialEq)]
@@ -122,35 +107,28 @@ pub struct ItdmaMessage {
 }
 
 impl ItdmaMessage {
-    pub fn parse(data: BitStream) -> Result<RadioStatus> {
-        match Self::parse_impl(data) {
-            IResult::Done(_, result) => Ok(result),
-            IResult::Error(err) => Err(err).chain_err(|| "parsing ITDMA status")?,
-            IResult::Incomplete(_) => Err("incomplete ITDMA status".into()),
-        }
+    pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), RadioStatus> {
+        let (data, sync_state) =
+            map_res(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
+        let (data, slot_increment) = take_bits::<_, _, _, (_, _)>(13u16)(data)?;
+        let (data, num_slots) = take_bits::<_, _, _, (_, _)>(3u8)(data)?;
+        let (data, keep) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        Ok((
+            data,
+            RadioStatus::Itdma(Self {
+                sync_state,
+                slot_increment,
+                num_slots,
+                keep,
+            }),
+        ))
     }
-
-    named!(parse_impl<RadioStatus>, bits!(Self::parser));
-
-    named!(
-        pub parser<(&[u8], usize), RadioStatus>,
-        do_parse!(
-            sync_state: map_res!(take_bits!(u8, 2), SyncState::parse) >> slot_increment: take_bits!(i16, 13)
-                >> num_slots: take_bits!(u8, 3) >> keep: take_bits!(u8, 1)
-                >> (RadioStatus::Itdma(Self {
-                    sync_state: sync_state,
-                    slot_increment: slot_increment,
-                    num_slots: num_slots,
-                    keep: keep != 0,
-                }))
-        )
-    );
 }
 
 pub fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
     match msg_type {
-        1 | 2 | 4 => SotdmaMessage::parser(input),
-        3 => ItdmaMessage::parser(input),
-        _ => ::nom::IResult::Error(::nom::ErrorKind::Digit),
+        1 | 2 | 4 => SotdmaMessage::parse(input),
+        3 => ItdmaMessage::parse(input),
+        _ => Err(nom::Err::Error((input, ErrorKind::Digit))),
     }
 }

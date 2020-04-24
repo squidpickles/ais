@@ -30,6 +30,8 @@
 pub mod errors;
 pub mod messages;
 pub mod sentence;
+
+pub use errors::Result;
 #[cfg(test)]
 mod test_helpers {
     #[inline]

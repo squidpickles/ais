@@ -39,7 +39,7 @@ pub fn parse_heading(data: u16) -> Result<Option<u16>> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Accuracy {
     Unaugmented,
     DGPS,
@@ -55,12 +55,12 @@ impl Accuracy {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct RateOfTurn {
     raw: i8,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Direction {
     Port,
     Starboard,
@@ -75,7 +75,7 @@ impl RateOfTurn {
         }
     }
 
-    pub fn rate(&self) -> Option<f32> {
+    pub fn rate(self) -> Option<f32> {
         match self.raw {
             -126..=126 => Some((self.raw as f32 / 4.733).powi(2)),
             -127 => None,
@@ -84,7 +84,7 @@ impl RateOfTurn {
         }
     }
 
-    pub fn direction(&self) -> Option<Direction> {
+    pub fn direction(self) -> Option<Direction> {
         match self.raw {
             0 => None,
             1..=127 => Some(Direction::Starboard),
@@ -94,8 +94,19 @@ impl RateOfTurn {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ManeuverIndicator {
     NoSpecialManeuver,
     SpecialManeuver,
+}
+impl ManeuverIndicator {
+    pub fn parse(data: u8) -> Result<Option<Self>> {
+        #[allow(overflowing_literals)]
+        match data as i8 {
+            0 => Ok(None),
+            1 => Ok(Some(Self::NoSpecialManeuver)),
+            2 => Ok(Some(Self::SpecialManeuver)),
+            _ => Err("Unknown maneuver indicator value".into()),
+        }
+    }
 }

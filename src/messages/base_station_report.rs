@@ -1,9 +1,11 @@
 use super::common::*;
 use super::navigation::*;
 use super::radio_status::{parse_radio, RadioStatus};
-use super::{signed_i32, u8_to_bool, AisMessageType, BitStream};
+use super::{signed_i32, u8_to_bool, AisMessageType};
 use crate::errors::*;
-use nom::*;
+use nom::bits::{bits, complete::take as take_bits};
+use nom::combinator::map_res;
+use nom::IResult;
 
 #[derive(Debug)]
 pub struct BaseStationReport {
@@ -29,83 +31,93 @@ impl<'a> AisMessageType<'a> for BaseStationReport {
         "Base Station Report"
     }
 
-    fn parse(data: BitStream) -> Result<Self> {
-        match base_parser(data) {
-            IResult::Done(_, result) => Ok(result),
-            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => Err("incomplete AIS sentence".into()),
-        }
+    fn parse(data: &[u8]) -> Result<Self> {
+        let (_, report) = base_parser(data)?;
+        Ok(report)
     }
 }
 
-named!(year_parser<(&[u8], usize), Option<u16>>, map_res!(take_bits!(u16, 14), |year| match year {
-    0 => Ok(None),
-    1..=9999 => Ok(Some(year)),
-    _ => Err("Invalid year"),
-}));
+fn year_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u16>> {
+    map_res(take_bits::<_, _, _, (_, _)>(14u16), |year| match year {
+        0 => Ok(None),
+        1..=9999 => Ok(Some(year)),
+        _ => Err("Invalid year"),
+    })(data)
+}
 
-named!(month_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 4), |month| match month {
-    0 => Ok(None),
-    1..=12 => Ok(Some(month)),
-    _ => Err("Invalid month"),
-}));
+fn month_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
+    map_res(take_bits::<_, _, _, (_, _)>(4u8), |month| match month {
+        0 => Ok(None),
+        1..=12 => Ok(Some(month)),
+        _ => Err("Invalid month"),
+    })(data)
+}
 
-named!(day_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 5), |day| match day {
-    0 => Ok(None),
-    1..=31 => Ok(Some(day)),
-    _ => Err("Invalid day"),
-}));
+fn day_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
+    map_res(take_bits::<_, _, _, (_, _)>(5u8), |day| match day {
+        0 => Ok(None),
+        1..=31 => Ok(Some(day)),
+        _ => Err("Invalid day"),
+    })(data)
+}
 
-named!(hour_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 5), |hour| match hour {
-    0..=23 => Ok(Some(hour)),
-    24 => Ok(None),
-    _ => Err("Invalid hour"),
-}));
+fn hour_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
+    map_res(take_bits::<_, _, _, (_, _)>(5u8), |hour| match hour {
+        0..=23 => Ok(Some(hour)),
+        24 => Ok(None),
+        _ => Err("Invalid hour"),
+    })(data)
+}
 
-named!(minsec_parser<(&[u8], usize), Option<u8>>, map_res!(take_bits!(u8, 6), |min_sec| match min_sec {
-    0..=59 => Ok(Some(min_sec)),
-    60 => Ok(None),
-    _ => Err("Invalid minute/second"),
-}));
+fn minsec_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
+    map_res(take_bits::<_, _, _, (_, _)>(6u8), |minsec| match minsec {
+        0..=59 => Ok(Some(minsec)),
+        60 => Ok(None),
+        _ => Err("Invalid minute/second"),
+    })(data)
+}
 
-named!(
-    base_parser<BaseStationReport>,
-    bits!(do_parse!(
-        msg_type: take_bits!(u8, 6)
-            >> repeat: take_bits!(u8, 2)
-            >> mmsi: take_bits!(u32, 30)
-            >> year: call!(year_parser)
-            >> month: call!(month_parser)
-            >> day: call!(day_parser)
-            >> hour: call!(hour_parser)
-            >> minute: call!(minsec_parser)
-            >> second: call!(minsec_parser)
-            >> accuracy: map_res!(take_bits!(u8, 1), Accuracy::parse)
-            >> lon: map_res!(apply!(signed_i32, 28), parse_longitude)
-            >> lat: map_res!(apply!(signed_i32, 27), parse_latitude)
-            >> epfd: map_res!(take_bits!(u8, 4), EpfdType::parse)
-            >> spare: take_bits!(u8, 10)
-            >> raim: map_res!(take_bits!(u8, 1), u8_to_bool)
-            >> radio: apply!(parse_radio, msg_type)
-            >> (BaseStationReport {
-                message_type: msg_type,
-                repeat_indicator: repeat,
-                mmsi: mmsi,
-                year: year,
-                month: month,
-                day: day,
-                hour: hour,
-                minute: minute,
-                second: second,
-                fix_quality: accuracy,
-                longitude: lon,
-                latitude: lat,
-                epfd_type: epfd,
-                raim: raim,
-                radio_status: radio,
-            })
-    ))
-);
+fn base_parser(data: &[u8]) -> IResult<&[u8], BaseStationReport> {
+    bits(move |data| -> IResult<_, _> {
+        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
+        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, year) = year_parser(data)?;
+        let (data, month) = month_parser(data)?;
+        let (data, day) = day_parser(data)?;
+        let (data, hour) = hour_parser(data)?;
+        let (data, minute) = minsec_parser(data)?;
+        let (data, second) = minsec_parser(data)?;
+        let (data, fix_quality) =
+            map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
+        let (data, epfd_type) = map_res(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(10u8)(data)?;
+        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, radio_status) = parse_radio(data, message_type)?;
+        Ok((
+            data,
+            BaseStationReport {
+                message_type,
+                repeat_indicator,
+                mmsi,
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                fix_quality,
+                longitude,
+                latitude,
+                epfd_type,
+                raim,
+                radio_status,
+            },
+        ))
+    })(data)
+}
 
 #[cfg(test)]
 mod tests {

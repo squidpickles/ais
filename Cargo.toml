@@ -13,7 +13,7 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-error-chain = "^0.12"
+thiserror = "1"
 nom = "6.0.0-alpha1"
 
 [badges]

@@ -1,5 +1,5 @@
 //! Handlers for AIS messages at the NMEA sentence layer
-use crate::errors::{ErrorKind, *};
+use crate::errors::{Error, Result};
 use crate::messages::{self, AisMessage};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_until};
@@ -63,7 +63,10 @@ impl<'a> AisSentence<'a> {
     fn check_checksum(sentence: &[u8], expected_checksum: u8) -> Result<u8> {
         let received_checksum = sentence.iter().fold(0u8, |acc, &item| acc ^ item);
         if expected_checksum != received_checksum {
-            Err(ErrorKind::Checksum(expected_checksum, received_checksum).into())
+            Err(Error::Checksum {
+                expected: expected_checksum,
+                found: received_checksum,
+            })
         } else {
             Ok(received_checksum)
         }

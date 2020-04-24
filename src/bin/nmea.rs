@@ -1,5 +1,3 @@
-extern crate ais;
-
 use ais::messages;
 use ais::sentence::AisSentence;
 use std::io::BufRead;

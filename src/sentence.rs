@@ -1,7 +1,13 @@
 //! Handlers for AIS messages at the NMEA sentence layer
-use crate::errors::{ErrorKind, *};
+use crate::errors::{Error, Result};
 use crate::messages::{self, AisMessage};
-use nom::*;
+use nom::branch::alt;
+use nom::bytes::complete::{tag, take_until};
+use nom::character::complete::{anychar, digit1};
+use nom::combinator::{map_res, opt, peek, verify};
+use nom::number::complete::hex_u32;
+use nom::sequence::terminated;
+use nom::IResult;
 
 #[derive(PartialEq, Debug)]
 /// Represents the NMEA sentence type of an AIS message
@@ -42,11 +48,7 @@ impl<'a> AisSentence<'a> {
     /// an `AisSentence`. Note that several `AisSentence`s might be required to
     /// complete a message, if they are fragments
     pub fn parse(line: &'a [u8]) -> Result<AisSentence<'a>> {
-        let (data, ais_msg, checksum) = match nmea_sentence(line) {
-            IResult::Done(_, result) => result,
-            IResult::Error(err) => Err(err).chain_err(|| "parsing AIS sentence")?,
-            IResult::Incomplete(_) => return Err("incomplete AIS sentence".into()),
-        };
+        let (_, (data, ais_msg, checksum)) = nmea_sentence(line)?;
         Self::check_checksum(data, checksum)?;
         Ok(ais_msg)
     }
@@ -61,7 +63,10 @@ impl<'a> AisSentence<'a> {
     fn check_checksum(sentence: &[u8], expected_checksum: u8) -> Result<u8> {
         let received_checksum = sentence.iter().fold(0u8, |acc, &item| acc ^ item);
         if expected_checksum != received_checksum {
-            Err(ErrorKind::Checksum(expected_checksum, received_checksum).into())
+            Err(Error::Checksum {
+                expected: expected_checksum,
+                found: received_checksum,
+            })
         } else {
             Ok(received_checksum)
         }
@@ -73,60 +78,83 @@ impl<'a> AisSentence<'a> {
     }
 }
 
-named!(numeric_string<&str>, map_res!(digit, ::std::str::from_utf8));
+/// Converts bytes representing an ASCII number to a string slice
+fn numeric_string(data: &[u8]) -> IResult<&[u8], &str> {
+    map_res(digit1, std::str::from_utf8)(data)
+}
 
-named!(
-    u8_digit<u8>,
-    map_res!(numeric_string, ::std::str::FromStr::from_str)
-);
-named!(nmea_start, alt!(tag!("!") | tag!("$")));
-named!(ais_type, alt!(tag!("AIVDM") | tag!("AIVDO")));
-named!(num_fragments<u8>, call!(u8_digit));
-named!(fragment_number<u8>, call!(u8_digit));
-named!(sequential_message_id<Option<u8>>, opt!(u8_digit));
-named!(channel<char>, call!(anychar));
-named!(ais_data, take_until!(","));
-named!(fill_bit_count<u8>, verify!(u8_digit, |val: u8| val < 6));
-named!(data_end, tag!("*"));
-named!(checksum<u32>, verify!(hex_u32, |val: u32| val <= 0xff));
-named!(
-    ais_sentence<AisSentence>,
-    do_parse!(
-        typ: ais_type
-            >> tag!(",")
-            >> ns: num_fragments
-            >> tag!(",")
-            >> sn: fragment_number
-            >> tag!(",")
-            >> smid: sequential_message_id
-            >> tag!(",")
-            >> chan: channel
-            >> tag!(",")
-            >> data: ais_data
-            >> tag!(",")
-            >> fb: fill_bit_count
-            >> (AisSentence {
-                msg_type: typ.into(),
-                num_fragments: ns,
-                fragment_number: sn,
-                message_id: smid,
-                channel: chan,
-                data: data,
-                fill_bit_count: fb
-            })
-    )
-);
+/// Converts bytes representing an ASCII number to a u8
+fn u8_digit(data: &[u8]) -> IResult<&[u8], u8> {
+    map_res(numeric_string, std::str::FromStr::from_str)(data)
+}
 
-named!(
-    nmea_sentence<(&[u8], AisSentence, u8)>,
-    do_parse!(
-        nmea_start
-            >> raw: peek!(take_until!("*"))
-            >> msg: terminated!(ais_sentence, data_end)
-            >> cs: checksum
-            >> (raw, msg, cs as u8)
-    )
-);
+fn nmea_start(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    alt((tag("!"), tag("$")))(data)
+}
+fn ais_type(data: &[u8]) -> IResult<&[u8], AisSentenceType> {
+    let (data, sentence_type) = alt((tag("AIVDM"), tag("AIVDO")))(data)?;
+    Ok((data, sentence_type.into()))
+}
+fn num_fragments(data: &[u8]) -> IResult<&[u8], u8> {
+    u8_digit(data)
+}
+fn fragment_number(data: &[u8]) -> IResult<&[u8], u8> {
+    u8_digit(data)
+}
+fn sequential_message_id(data: &[u8]) -> IResult<&[u8], Option<u8>> {
+    opt(u8_digit)(data)
+}
+fn channel(data: &[u8]) -> IResult<&[u8], char> {
+    anychar(data)
+}
+fn ais_data(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    take_until(",")(data)
+}
+fn fill_bit_count(data: &[u8]) -> IResult<&[u8], u8> {
+    verify(u8_digit, |val| val < &6)(data)
+}
+fn data_end(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    tag("*")(data)
+}
+fn checksum(data: &[u8]) -> IResult<&[u8], u32> {
+    verify(hex_u32, |val| val <= &0xff)(data)
+}
+
+fn ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
+    let (data, msg_type) = ais_type(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, num_fragments) = num_fragments(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, fragment_number) = fragment_number(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, message_id) = sequential_message_id(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, channel) = channel(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, ais_data) = ais_data(data)?;
+    let (data, _) = tag(",")(data)?;
+    let (data, fill_bit_count) = fill_bit_count(data)?;
+    Ok((
+        data,
+        AisSentence {
+            msg_type,
+            num_fragments,
+            fragment_number,
+            message_id,
+            channel,
+            data: ais_data,
+            fill_bit_count,
+        },
+    ))
+}
+
+fn nmea_sentence(data: &[u8]) -> IResult<&[u8], (&[u8], AisSentence, u8)> {
+    let (data, _) = nmea_start(data)?;
+    let (data, raw) = peek(take_until("*"))(data)?;
+    let (data, msg) = terminated(ais_sentence, data_end)(data)?;
+    let (data, checksum) = checksum(data)?;
+    Ok((data, (raw, msg, checksum as u8)))
+}
 
 #[cfg(test)]
 mod tests {
@@ -139,7 +167,6 @@ mod tests {
     const AIS_START_IDX: usize = 14;
     const AIS_END_IDX: usize = 61;
     use super::*;
-    use nom;
 
     #[test]
     fn parse_valid_structure() {
@@ -161,8 +188,7 @@ mod tests {
 
     #[test]
     fn parse_invalid_structure() {
-        let result = ais_sentence(&BAD_STRUCTURE[1..64]).unwrap_err();
-        assert_eq!(result, nom::ErrorKind::Digit);
+        assert!(ais_sentence(&BAD_STRUCTURE[1..64]).is_err());
     }
 
     #[test]

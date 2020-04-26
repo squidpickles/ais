@@ -25,26 +25,29 @@ BaseStationReport(BaseStationReport { message_type: 4, repeat_indicator: 0, mmsi
 ## Use it as a library
 Here's a very simple example that parses a single NMEA sentence. In this case, it contains an Aid to Navigation Report:
  ```rust
-use ais::sentence::AisSentence;
+use ais::sentence::{AisFragments, AisParser};
 use ais::messages::AisMessage;
 
 // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.
 let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
 
-let sentence = AisSentence::parse(line)?;
-// This sentence is complete, ie unfragmented
-assert_eq!(sentence.num_fragments, 1);
-// The data was transmitted on AIS channel B
-assert_eq!(sentence.channel, 'B');
+let mut parser = AisParser::new();
+if let AisFragments::Complete(sentence) = parser.parse(line, true)? {
+    // This sentence is complete, ie unfragmented
+    assert_eq!(sentence.num_fragments, 1);
+    // The data was transmitted on AIS channel B
+    assert_eq!(sentence.channel, 'B');
 
-// Now we parse the message itself
-match sentence.message()? {
-    AisMessage::AidToNavigationReport(report) => {
-        assert_eq!(report.mmsi, 993692028);
-        assert_eq!(report.name, "SF OAK BAY BR VAIS E");
-        // There are a ton more fields available here
-    },
-    _ => panic!("Unexpected message type"),
+    if let Some(message) = sentence.message {
+        match message {
+            AisMessage::AidToNavigationReport(report) => {
+                assert_eq!(report.mmsi, 993692028);
+                assert_eq!(report.name, "SF OAK BAY BR VAIS E");
+                // There are a ton more fields available here
+            },
+            _ => panic!("Unexpected message type"),
+        }
+    }
 }
 # Ok::<(), ais::errors::Error>(())
 ```
@@ -55,5 +58,6 @@ Right now, only a few common types are supported. They are:
 - Position Report (types 1-3)
 - Base Station Report (type 4)
 - Aid to Navigation Report (type 21)
+- Static and Voyage Related Data (type 5)
 
 Others to come soon, I hope!

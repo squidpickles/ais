@@ -1,11 +1,9 @@
 use super::common::*;
 use super::navigation::*;
-use super::{signed_i32, sixbit_to_ascii, u8_to_bool, AisMessageType};
+use super::{signed_i32, u8_to_bool, AisMessageType};
 use crate::errors::*;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map_res;
-use nom::error::ErrorKind;
-use nom::multi::count;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -83,7 +81,7 @@ impl NavaidType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct AidToNavigationReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -112,24 +110,12 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = base_parser(data)?;
+        let (_, report) = parse_base(data)?;
         Ok(report)
     }
 }
 
-fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], usize), String> {
-    let char_count = size / 6;
-    let (input, bytes) = count(
-        map_res(take_bits::<_, _, _, (_, _)>(6u8), sixbit_to_ascii),
-        char_count,
-    )(input)?;
-    match ::std::str::from_utf8(&bytes) {
-        Ok(val) => Ok((input, val.trim_end().to_string())),
-        Err(_) => Err(nom::Err::Error((input, ErrorKind::AlphaNumeric))),
-    }
-}
-
-fn base_parser(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
+fn parse_base(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;

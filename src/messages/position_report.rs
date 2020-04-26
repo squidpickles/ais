@@ -6,7 +6,7 @@ use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::{map, map_res};
 use nom::IResult;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PositionReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -31,12 +31,12 @@ impl<'a> AisMessageType<'a> for PositionReport {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = base_parser(data)?;
+        let (_, report) = parse_base(data)?;
         Ok(report)
     }
 }
 
-fn base_parser(data: &[u8]) -> IResult<&[u8], PositionReport> {
+fn parse_base(data: &[u8]) -> IResult<&[u8], PositionReport> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;

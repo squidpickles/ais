@@ -1,18 +1,18 @@
-use ais::messages;
-use ais::sentence::AisSentence;
+use ais::sentence::{AisFragments, AisParser};
 use std::io::BufRead;
 
 use std::io;
 
-fn parse_nmea_line(line: &[u8]) -> Result<(), ais::errors::Error> {
-    let sentence = AisSentence::parse(line)?;
-    let raw = messages::unarmor(sentence.data, sentence.fill_bit_count as usize)?;
-    let message = messages::parse(&raw)?;
-    println!("{:?}", message);
+fn parse_nmea_line(parser: &mut AisParser, line: &[u8]) -> Result<(), ais::errors::Error> {
+    let sentence = parser.parse(line, true)?;
+    if let AisFragments::Complete(sentence) = sentence {
+        println!("{:?}", sentence.message);
+    }
     Ok(())
 }
 
 fn main() {
+    let mut parser = AisParser::new();
     let stdin = io::stdin();
     {
         let handle = stdin.lock();
@@ -21,7 +21,7 @@ fn main() {
             .split(b'\n')
             .map(|line| line.unwrap())
             .for_each(|line| {
-                parse_nmea_line(&line).unwrap_or_else(|err| {
+                parse_nmea_line(&mut parser, &line).unwrap_or_else(|err| {
                     eprintln!("{:?}", err);
                 });
             });

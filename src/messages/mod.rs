@@ -11,12 +11,14 @@ mod common;
 mod navigation;
 pub mod position_report;
 mod radio_status;
+pub mod static_and_voyage_related_data;
 
 /// Contains all structured messages recognized by this crate
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AisMessage {
     PositionReport(position_report::PositionReport),
     BaseStationReport(base_station_report::BaseStationReport),
+    StaticAndVoyageRelatedData(static_and_voyage_related_data::StaticAndVoyageRelatedData),
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
 }
 
@@ -32,7 +34,7 @@ fn message_type(data: &[u8]) -> IResult<&[u8], u8> {
     bits(move |data| -> IResult<_, _> { peek(take_bits(6u8))(data) })(data)
 }
 
-/// Given an unarmored bitstream (see `unarmor()` for details), this
+/// Given an unarmored bitstream (see [`unarmor()`](fn.unarmor.html) for details), this
 /// will return a message type object, if supported by this library
 /// and the message is valid.
 ///
@@ -44,6 +46,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         4 => Ok(AisMessage::BaseStationReport(
             base_station_report::BaseStationReport::parse(&unarmored)?,
+        )),
+        5 => Ok(AisMessage::StaticAndVoyageRelatedData(
+            static_and_voyage_related_data::StaticAndVoyageRelatedData::parse(&unarmored)?,
         )),
         21 => Ok(AisMessage::AidToNavigationReport(
             aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
@@ -96,7 +101,7 @@ fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32>
 /// Returns an error if any of the individual bytes cannot be converted
 /// to a valid 6-bit chunk.
 ///
-/// See https://gpsd.gitlab.io/gpsd/AIVDM.html for more details.
+/// See <https://gpsd.gitlab.io/gpsd/AIVDM.html> for more details.
 pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
@@ -171,6 +176,28 @@ mod tests {
         let input = b"9qKr";
         let result = unarmor(input, 0).unwrap();
         assert_eq!([0b0010_0111, 0b1001_0110, 0b0_1111_1010], &result[..]);
+    }
+
+    #[test]
+    fn unarmor_multi_bytes_long() {
+        let input = b"E>kb9O9aS@7PUh";
+        let result = unarmor(input, 4).unwrap();
+        assert_eq!(
+            [
+                0b0101_0100,
+                0b1110_1100,
+                0b1110_1010,
+                0b0010_0101,
+                0b1111_0010,
+                0b0110_1001,
+                0b1000_1101,
+                0b0000_0001,
+                0b1110_0000,
+                0b1001_0111,
+                0b0000_0000,
+            ],
+            &result[..]
+        );
     }
 
     #[test]

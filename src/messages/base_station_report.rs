@@ -7,7 +7,7 @@ use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map_res;
 use nom::IResult;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BaseStationReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -32,62 +32,22 @@ impl<'a> AisMessageType<'a> for BaseStationReport {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = base_parser(data)?;
+        let (_, report) = parse_base(data)?;
         Ok(report)
     }
 }
 
-fn year_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u16>> {
-    map_res(take_bits::<_, _, _, (_, _)>(14u16), |year| match year {
-        0 => Ok(None),
-        1..=9999 => Ok(Some(year)),
-        _ => Err("Invalid year"),
-    })(data)
-}
-
-fn month_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map_res(take_bits::<_, _, _, (_, _)>(4u8), |month| match month {
-        0 => Ok(None),
-        1..=12 => Ok(Some(month)),
-        _ => Err("Invalid month"),
-    })(data)
-}
-
-fn day_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map_res(take_bits::<_, _, _, (_, _)>(5u8), |day| match day {
-        0 => Ok(None),
-        1..=31 => Ok(Some(day)),
-        _ => Err("Invalid day"),
-    })(data)
-}
-
-fn hour_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map_res(take_bits::<_, _, _, (_, _)>(5u8), |hour| match hour {
-        0..=23 => Ok(Some(hour)),
-        24 => Ok(None),
-        _ => Err("Invalid hour"),
-    })(data)
-}
-
-fn minsec_parser(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map_res(take_bits::<_, _, _, (_, _)>(6u8), |minsec| match minsec {
-        0..=59 => Ok(Some(minsec)),
-        60 => Ok(None),
-        _ => Err("Invalid minute/second"),
-    })(data)
-}
-
-fn base_parser(data: &[u8]) -> IResult<&[u8], BaseStationReport> {
+fn parse_base(data: &[u8]) -> IResult<&[u8], BaseStationReport> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
         let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, year) = year_parser(data)?;
-        let (data, month) = month_parser(data)?;
-        let (data, day) = day_parser(data)?;
-        let (data, hour) = hour_parser(data)?;
-        let (data, minute) = minsec_parser(data)?;
-        let (data, second) = minsec_parser(data)?;
+        let (data, year) = parse_year(data)?;
+        let (data, month) = parse_month(data)?;
+        let (data, day) = parse_day(data)?;
+        let (data, hour) = parse_hour(data)?;
+        let (data, minute) = parse_minsec(data)?;
+        let (data, second) = parse_minsec(data)?;
         let (data, fix_quality) =
             map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
         let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;

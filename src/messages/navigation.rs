@@ -55,7 +55,7 @@ impl Accuracy {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct RateOfTurn {
     raw: i8,
 }

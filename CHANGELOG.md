@@ -5,6 +5,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2020-04-28
+### Added
+- Support for type 24 messages
+- Export `AisParser` and `AisFragments` at crate level
+
+### Changed
+- Channel returns an `Option` to support missing channels (seen in real-world)
+- Maneuverability and date indices out of spec no longer throw an error
+
 ## [0.2.0] - 2020-04-26
 ### Added
 - Support for type 5 messages

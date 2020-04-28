@@ -59,5 +59,6 @@ Right now, only a few common types are supported. They are:
 - Base Station Report (type 4)
 - Aid to Navigation Report (type 21)
 - Static and Voyage Related Data (type 5)
+- Static Data Report (type 24)
 
 Others to come soon, I hope!

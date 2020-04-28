@@ -15,7 +15,7 @@
 //!     // This sentence is complete, ie unfragmented
 //!     assert_eq!(sentence.num_fragments, 1);
 //!     // The data was transmitted on AIS channel B
-//!     assert_eq!(sentence.channel, 'B');
+//!     assert_eq!(sentence.channel, Some('B'));
 //!
 //!     if let Some(message) = sentence.message {
 //!         match message {

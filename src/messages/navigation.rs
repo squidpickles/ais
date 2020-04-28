@@ -98,15 +98,15 @@ impl RateOfTurn {
 pub enum ManeuverIndicator {
     NoSpecialManeuver,
     SpecialManeuver,
+    Unknown(u8),
 }
 impl ManeuverIndicator {
-    pub fn parse(data: u8) -> Result<Option<Self>> {
-        #[allow(overflowing_literals)]
-        match data as i8 {
-            0 => Ok(None),
-            1 => Ok(Some(Self::NoSpecialManeuver)),
-            2 => Ok(Some(Self::SpecialManeuver)),
-            _ => Err("Unknown maneuver indicator value".into()),
+    pub fn parse(data: u8) -> Option<Self> {
+        match data {
+            0 => None,
+            1 => Some(Self::NoSpecialManeuver),
+            2 => Some(Self::SpecialManeuver),
+            _ => Some(Self::Unknown(data)),
         }
     }
 }

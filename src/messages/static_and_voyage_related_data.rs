@@ -37,12 +37,12 @@ impl<'a> AisMessageType<'a> for StaticAndVoyageRelatedData {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = parse_base(data)?;
+        let (_, report) = parse_message(data)?;
         Ok(report)
     }
 }
 
-fn parse_base(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
+fn parse_message(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
@@ -117,16 +117,19 @@ mod tests {
     fn test_type5_truncated() {
         let bytestream = b"5341U9`00000uCGCKL0u=@T4000000000000001?<@<47u;b004Sm51DQ0C@";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let base = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
-        assert_eq!(base.message_type, 5);
-        assert_eq!(base.repeat_indicator, 0);
-        assert_eq!(base.mmsi, 205546790);
-        assert_eq!(base.callsign, "OT5467");
-        assert_eq!(base.ship_type, Some(ShipType::CargoNoAdditionalInformation));
-        assert_eq!(base.eta_month_utc, Some(4));
-        assert_eq!(base.destination, "ROTTERDAM");
-        assert_eq!(base.epfd_type, None);
-        assert_eq!(base.dte, Dte::Ready);
+        let message = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
+        assert_eq!(message.message_type, 5);
+        assert_eq!(message.repeat_indicator, 0);
+        assert_eq!(message.mmsi, 205546790);
+        assert_eq!(message.callsign, "OT5467");
+        assert_eq!(
+            message.ship_type,
+            Some(ShipType::CargoNoAdditionalInformation)
+        );
+        assert_eq!(message.eta_month_utc, Some(4));
+        assert_eq!(message.destination, "ROTTERDAM");
+        assert_eq!(message.epfd_type, None);
+        assert_eq!(message.dte, Dte::Ready);
     }
 
     #[test]
@@ -138,16 +141,16 @@ mod tests {
         */
         let bytestream = b"53`soB8000010KSOW<0P4eDp4l6000000000000U0p<24t@P05H3S833CDP000000000000";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let base = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
-        assert_eq!(base.message_type, 5);
-        assert_eq!(base.repeat_indicator, 0);
-        assert_eq!(base.mmsi, 244250440);
-        assert_eq!(base.callsign, "PF8793");
-        assert_eq!(base.ship_type, Some(ShipType::PleasureCraft));
-        f32_equal_naive(base.draught, 2.1);
-        assert_eq!(base.eta_month_utc, Some(1));
-        assert_eq!(base.destination, "NL LMMR");
-        assert_eq!(base.epfd_type, None);
-        assert_eq!(base.dte, Dte::Ready);
+        let message = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
+        assert_eq!(message.message_type, 5);
+        assert_eq!(message.repeat_indicator, 0);
+        assert_eq!(message.mmsi, 244250440);
+        assert_eq!(message.callsign, "PF8793");
+        assert_eq!(message.ship_type, Some(ShipType::PleasureCraft));
+        f32_equal_naive(message.draught, 2.1);
+        assert_eq!(message.eta_month_utc, Some(1));
+        assert_eq!(message.destination, "NL LMMR");
+        assert_eq!(message.epfd_type, None);
+        assert_eq!(message.dte, Dte::Ready);
     }
 }

@@ -112,12 +112,12 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = parse_base(data)?;
+        let (_, report) = parse_message(data)?;
         Ok(report)
     }
 }
 
-fn parse_base(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
+fn parse_message(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
@@ -176,15 +176,15 @@ mod tests {
     fn test_type21_not_extended() {
         let bytestream = b"E>kb9II9S@0`8@:9ah;0TahIW@@;Uafb:r5Ih00003vP100";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let base = AidToNavigationReport::parse(&bitstream).unwrap();
-        assert_eq!(base.message_type, 21);
-        assert_eq!(base.repeat_indicator, 0);
-        assert_eq!(base.mmsi, 993692005);
-        assert_eq!(base.name, "SF APP TSS VAIS 3N");
-        assert_eq!(base.accuracy, Accuracy::Unaugmented);
-        f32_equal_naive(base.longitude.unwrap(), -123.35972);
-        f32_equal_naive(base.latitude.unwrap(), 38.124718);
-        assert_eq!(base.epfd_type, Some(EpfdType::Surveyed));
-        assert_eq!(base.raim, false);
+        let message = AidToNavigationReport::parse(&bitstream).unwrap();
+        assert_eq!(message.message_type, 21);
+        assert_eq!(message.repeat_indicator, 0);
+        assert_eq!(message.mmsi, 993692005);
+        assert_eq!(message.name, "SF APP TSS VAIS 3N");
+        assert_eq!(message.accuracy, Accuracy::Unaugmented);
+        f32_equal_naive(message.longitude.unwrap(), -123.35972);
+        f32_equal_naive(message.latitude.unwrap(), 38.124718);
+        assert_eq!(message.epfd_type, Some(EpfdType::Surveyed));
+        assert_eq!(message.raim, false);
     }
 }

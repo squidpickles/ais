@@ -93,22 +93,22 @@ mod tests {
     fn test_type4() {
         let bytestream = b"403OtVAv7=i?;o?IaHE`4Iw020S:";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let base = BaseStationReport::parse(&bitstream).unwrap();
-        assert_eq!(base.message_type, 4);
-        assert_eq!(base.repeat_indicator, 0);
-        assert_eq!(base.mmsi, 003669145);
-        assert_eq!(base.year, Some(2017));
-        assert_eq!(base.month, Some(12));
-        assert_eq!(base.day, Some(27));
-        assert_eq!(base.hour, Some(17));
-        assert_eq!(base.minute, Some(15));
-        assert_eq!(base.second, Some(11));
-        assert_eq!(base.fix_quality, Accuracy::DGPS);
-        f32_equal_naive(base.longitude.unwrap(), -122.464775);
-        f32_equal_naive(base.latitude.unwrap(), 37.794308);
-        assert_eq!(base.epfd_type, None);
-        assert_eq!(base.raim, true);
-        if let RadioStatus::Sotdma(radio_status) = base.radio_status {
+        let message = BaseStationReport::parse(&bitstream).unwrap();
+        assert_eq!(message.message_type, 4);
+        assert_eq!(message.repeat_indicator, 0);
+        assert_eq!(message.mmsi, 003669145);
+        assert_eq!(message.year, Some(2017));
+        assert_eq!(message.month, Some(12));
+        assert_eq!(message.day, Some(27));
+        assert_eq!(message.hour, Some(17));
+        assert_eq!(message.minute, Some(15));
+        assert_eq!(message.second, Some(11));
+        assert_eq!(message.fix_quality, Accuracy::DGPS);
+        f32_equal_naive(message.longitude.unwrap(), -122.464775);
+        f32_equal_naive(message.latitude.unwrap(), 37.794308);
+        assert_eq!(message.epfd_type, None);
+        assert_eq!(message.raim, true);
+        if let RadioStatus::Sotdma(radio_status) = message.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 0);
             assert_eq!(radio_status.sub_message, SubMessage::SlotOffset(2250));
@@ -121,27 +121,38 @@ mod tests {
     fn test_type4_2() {
         let bytestream = b"403OviQuMGCqWrRO9>E6fE700@GO";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let base = BaseStationReport::parse(&bitstream).unwrap();
-        assert_eq!(base.message_type, 4);
-        assert_eq!(base.repeat_indicator, 0);
-        assert_eq!(base.mmsi, 3669702);
-        assert_eq!(base.year, Some(2007));
-        assert_eq!(base.month, Some(5));
-        assert_eq!(base.day, Some(14));
-        assert_eq!(base.hour, Some(19));
-        assert_eq!(base.minute, Some(57));
-        assert_eq!(base.second, Some(39));
-        assert_eq!(base.fix_quality, Accuracy::DGPS);
-        assert_eq!(base.longitude, Some(-76.35236));
-        assert_eq!(base.latitude, Some(36.883766));
-        assert_eq!(base.epfd_type, Some(EpfdType::Surveyed));
-        assert_eq!(base.raim, false);
-        if let RadioStatus::Sotdma(radio_status) = base.radio_status {
+        let message = BaseStationReport::parse(&bitstream).unwrap();
+        assert_eq!(message.message_type, 4);
+        assert_eq!(message.repeat_indicator, 0);
+        assert_eq!(message.mmsi, 3669702);
+        assert_eq!(message.year, Some(2007));
+        assert_eq!(message.month, Some(5));
+        assert_eq!(message.day, Some(14));
+        assert_eq!(message.hour, Some(19));
+        assert_eq!(message.minute, Some(57));
+        assert_eq!(message.second, Some(39));
+        assert_eq!(message.fix_quality, Accuracy::DGPS);
+        assert_eq!(message.longitude, Some(-76.35236));
+        assert_eq!(message.latitude, Some(36.883766));
+        assert_eq!(message.epfd_type, Some(EpfdType::Surveyed));
+        assert_eq!(message.raim, false);
+        if let RadioStatus::Sotdma(radio_status) = message.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 4);
             assert_eq!(radio_status.sub_message, SubMessage::SlotNumber(1503));
         } else {
             panic!("Expected SOTDMA message");
         }
+    }
+
+    #[test]
+    fn test_type4_invalid_date() {
+        let bytestream = b"4h2E:qT47wk?0<tSF0l4Q@000d;@";
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
+        let message = BaseStationReport::parse(&bitstream).unwrap();
+        assert_eq!(message.mmsi, 002444006);
+        assert_eq!(message.year, Some(4161));
+        assert_eq!(message.month, Some(15));
+        assert_eq!(message.day, Some(31));
     }
 }

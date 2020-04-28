@@ -185,29 +185,3 @@ impl From<u8> for Dte {
         }
     }
 }
-
-#[derive(Debug, PartialEq)]
-pub struct Mmsi(u32);
-
-impl From<u32> for Mmsi {
-    fn from(mmsi: u32) -> Self {
-        Self(mmsi)
-    }
-}
-
-impl std::fmt::Display for Mmsi {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-const MMSI_EXPONENT_1: u32 = 100_000_000;
-const MMSI_EXPONENT_2: u32 = 10_000_000;
-
-impl Mmsi {
-    pub fn is_auxiliary_craft(&self) -> bool {
-        let d1 = self.0 / MMSI_EXPONENT_1;
-        let d2 = (self.0 - d1 * MMSI_EXPONENT_1) / MMSI_EXPONENT_2;
-        d1 == 9 && d2 == 8
-    }
-}

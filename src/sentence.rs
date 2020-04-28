@@ -191,7 +191,7 @@ pub struct AisSentence<'a> {
     pub num_fragments: u8,
     pub fragment_number: u8,
     pub message_id: Option<u8>,
-    pub channel: char,
+    pub channel: Option<char>,
     pub data: Cow<'a, [u8]>,
     pub fill_bit_count: u8,
     pub message_type: u8,
@@ -231,7 +231,8 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
     let (data, _) = tag(",")(data)?;
     let (data, message_id) = opt(parse_u8_digit)(data)?;
     let (data, _) = tag(",")(data)?;
-    let (data, channel) = anychar(data)?;
+    let (data, channel_bytes) = take_until(",")(data)?;
+    let (_, channel) = opt(anychar)(channel_bytes)?;
     let (data, _) = tag(",")(data)?;
     let (data, ais_data) = take_until(",")(data)?;
     let (data, _) = tag(",")(data)?;
@@ -276,6 +277,7 @@ mod tests {
     const FRAGMENT_1: &[u8] =
         b"!AIVDM,2,1,1,B,53`soB8000010KSOW<0P4eDp4l6000000000000U0p<24t@P05H3S833CDP00000,0*78";
     const FRAGMENT_2: &[u8] = b"!AIVDM,2,2,1,B,0000000,2*26";
+    const NO_CHANNEL: &[u8] = b"!AIVDM,1,1,,,34RvgN500005tLTMfjiTs3u`0>`<,0*7A";
     const AIS_START_IDX: usize = 14;
     const AIS_END_IDX: usize = 61;
 
@@ -291,7 +293,7 @@ mod tests {
                 num_fragments: 1,
                 fragment_number: 1,
                 message_id: None,
-                channel: 'A',
+                channel: Some('A'),
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
                 message_type: 17,
@@ -317,7 +319,7 @@ mod tests {
                 num_fragments: 1,
                 fragment_number: 1,
                 message_id: None,
-                channel: 'A',
+                channel: Some('A'),
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
                 message_type: 17,
@@ -339,7 +341,7 @@ mod tests {
                 num_fragments: 1,
                 fragment_number: 1,
                 message_id: None,
-                channel: 'A',
+                channel: Some('A'),
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
                 message_type: 17,
@@ -382,5 +384,12 @@ mod tests {
         assert_eq!(TalkerId::from(b"AI".as_ref()), TalkerId::AI);
         assert_eq!(TalkerId::from(b"AB".as_ref()), TalkerId::AB);
         assert_eq!(TalkerId::from(b"BS".as_ref()), TalkerId::BS);
+    }
+
+    #[test]
+    fn test_no_channel() {
+        let result = parse_nmea_sentence(NO_CHANNEL).unwrap();
+        let sentence = (result.1).1;
+        assert_eq!(sentence.channel, None);
     }
 }

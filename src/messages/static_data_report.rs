@@ -21,7 +21,7 @@ impl<'a> AisMessageType<'a> for StaticDataReport {
     }
 
     fn parse(data: &[u8]) -> Result<Self> {
-        let (_, report) = parse_base(data)?;
+        let (_, report) = parse_message(data)?;
         Ok(report)
     }
 }
@@ -52,7 +52,7 @@ pub enum MessagePart {
     },
 }
 
-fn parse_message_part(data: (&[u8], usize), mmsi: Mmsi) -> IResult<(&[u8], usize), MessagePart> {
+fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePart> {
     let (data, part_number) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
     match part_number {
         0 => {
@@ -100,12 +100,12 @@ fn parse_message_part(data: (&[u8], usize), mmsi: Mmsi) -> IResult<(&[u8], usize
     }
 }
 
-fn parse_base(data: &[u8]) -> IResult<&[u8], StaticDataReport> {
+fn parse_message(data: &[u8]) -> IResult<&[u8], StaticDataReport> {
     bits(move |data| -> IResult<_, _> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
         let (data, mmsi) = take_bits::<_, u32, _, (_, _)>(30u32)(data)?;
-        let (data, message_part) = parse_message_part(data, mmsi.into())?;
+        let (data, message_part) = parse_message_part(data)?;
         Ok((
             data,
             StaticDataReport {
@@ -122,7 +122,6 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], StaticDataReport> {
 mod tests {
     #![allow(clippy::unreadable_literal)]
     use super::*;
-    use crate::test_helpers::f32_equal_naive;
 
     #[test]
     fn test_part_a_message() {

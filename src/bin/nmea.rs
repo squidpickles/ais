@@ -6,7 +6,11 @@ use std::io;
 fn parse_nmea_line(parser: &mut AisParser, line: &[u8]) -> Result<(), ais::errors::Error> {
     let sentence = parser.parse(line, true)?;
     if let AisFragments::Complete(sentence) = sentence {
-        println!("{:?}", sentence.message);
+        println!(
+            "{:?}\t{:?}",
+            std::str::from_utf8(line).unwrap(),
+            sentence.message
+        );
     }
     Ok(())
 }
@@ -22,7 +26,7 @@ fn main() {
             .map(|line| line.unwrap())
             .for_each(|line| {
                 parse_nmea_line(&mut parser, &line).unwrap_or_else(|err| {
-                    eprintln!("{:?}", err);
+                    eprintln!("{:?}\t{:?}", std::str::from_utf8(&line).unwrap(), err);
                 });
             });
     }

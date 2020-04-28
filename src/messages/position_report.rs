@@ -56,7 +56,7 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], PositionReport> {
             map_res(take_bits::<_, _, _, (_, _)>(9u16), parse_heading)(data)?;
         let (data, timestamp) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, maneuver_indicator) =
-            map_res(take_bits::<_, _, _, (_, _)>(2u8), ManeuverIndicator::parse)(data)?;
+            map(take_bits::<_, _, _, (_, _)>(2u8), ManeuverIndicator::parse)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, (_, _)>(3u8)(data)?;
         let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         let (data, radio_status) = parse_radio(data, message_type)?;
@@ -188,7 +188,6 @@ mod tests {
 
     #[test]
     fn test_type3() {
-        // FIXME: broken test
         let bytestream = b"38Id705000rRVJhE7cl9n;160000";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let position = PositionReport::parse(&bitstream).unwrap();
@@ -211,5 +210,16 @@ mod tests {
         } else {
             panic!("Expected ITDMA message");
         }
+    }
+
+    #[test]
+    fn test_maneuver_indicator_out_of_spec() {
+        let bytestream = b"33nQ:B50000FiEBRjpcK19qSR>`<";
+        let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
+        let position = PositionReport::parse(&bitstream).unwrap();
+        assert_eq!(
+            position.maneuver_indicator,
+            Some(ManeuverIndicator::Unknown(3))
+        );
     }
 }

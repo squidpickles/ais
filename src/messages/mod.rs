@@ -1,17 +1,18 @@
 //! Specific AIS message types
 use crate::errors::*;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::peek;
 use nom::IResult;
 use std::cmp;
 
 pub mod aid_to_navigation_report;
 pub mod base_station_report;
-mod common;
 mod navigation;
+mod parsers;
 pub mod position_report;
 mod radio_status;
 pub mod static_and_voyage_related_data;
+pub mod static_data_report;
+mod types;
 
 /// Contains all structured messages recognized by this crate
 #[derive(Debug, PartialEq)]
@@ -20,6 +21,7 @@ pub enum AisMessage {
     BaseStationReport(base_station_report::BaseStationReport),
     StaticAndVoyageRelatedData(static_and_voyage_related_data::StaticAndVoyageRelatedData),
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
+    StaticDataReport(static_data_report::StaticDataReport),
 }
 
 /// Trait that describes specific types of AIS messages
@@ -30,8 +32,14 @@ pub trait AisMessageType<'a>: Sized {
     fn parse(data: &'a [u8]) -> Result<Self>;
 }
 
-fn message_type(data: &[u8]) -> IResult<&[u8], u8> {
-    bits(move |data| -> IResult<_, _> { peek(take_bits(6u8))(data) })(data)
+/// Gets the message type from the first byte of supplied data
+pub fn message_type(data: &[u8]) -> IResult<&[u8], u8> {
+    bits(message_type_bits)(data)
+}
+
+/// Gets the message type from the current bitstream position
+pub fn message_type_bits(data: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
+    take_bits(6u8)(data)
 }
 
 /// Given an unarmored bitstream (see [`unarmor()`](fn.unarmor.html) for details), this
@@ -52,6 +60,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         21 => Ok(AisMessage::AidToNavigationReport(
             aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
+        )),
+        24 => Ok(AisMessage::StaticDataReport(
+            static_data_report::StaticDataReport::parse(&unarmored)?,
         )),
         _ => Err(format!("Unimplemented type: {}", result).into()),
     }

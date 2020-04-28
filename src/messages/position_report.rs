@@ -1,3 +1,4 @@
+//! Position Report (types 1-3)
 use super::navigation::*;
 use super::radio_status::{parse_radio, RadioStatus};
 use super::{signed_i32, u8_to_bool, AisMessageType};

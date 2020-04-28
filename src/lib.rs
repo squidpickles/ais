@@ -4,7 +4,7 @@
 //!
 //! # Example:
 //! ```
-//! use ais::sentence::{AisFragments, AisParser};
+//! use ais::{AisFragments, AisParser};
 //! use ais::messages::AisMessage;
 //!
 //! // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.
@@ -35,6 +35,7 @@ pub mod messages;
 pub mod sentence;
 
 pub use errors::Result;
+pub use sentence::{AisFragments, AisParser};
 #[cfg(test)]
 mod test_helpers {
     #[inline]

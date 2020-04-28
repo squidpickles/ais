@@ -119,6 +119,7 @@ impl Default for AisParser {
 }
 
 impl AisParser {
+    /// Creates a new `AisParser` instance
     pub fn new() -> Self {
         Self::default()
     }
@@ -193,6 +194,7 @@ pub struct AisSentence<'a> {
     pub channel: char,
     pub data: Cow<'a, [u8]>,
     pub fill_bit_count: u8,
+    pub message_type: u8,
     pub message: Option<AisMessage>,
 }
 
@@ -234,6 +236,7 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
     let (data, ais_data) = take_until(",")(data)?;
     let (data, _) = tag(",")(data)?;
     let (data, fill_bit_count) = verify(parse_u8_digit, |val| *val < 6)(data)?;
+    let (_, message_type) = messages::message_type(ais_data)?;
     Ok((
         data,
         AisSentence {
@@ -245,6 +248,7 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
             channel,
             data: ais_data.into(),
             fill_bit_count,
+            message_type,
             message: None,
         },
     ))
@@ -290,6 +294,7 @@ mod tests {
                 channel: 'A',
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
+                message_type: 17,
                 message: None,
             }
         );
@@ -315,6 +320,7 @@ mod tests {
                 channel: 'A',
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
+                message_type: 17,
                 message: None,
             }
         );
@@ -336,6 +342,7 @@ mod tests {
                 channel: 'A',
                 data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
                 fill_bit_count: 0,
+                message_type: 17,
                 message: None,
             })
         );

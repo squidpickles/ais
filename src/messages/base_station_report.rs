@@ -1,6 +1,8 @@
-use super::common::*;
+//! Base Station Report (type 4)
 use super::navigation::*;
+use super::parsers::*;
 use super::radio_status::{parse_radio, RadioStatus};
+use super::types::*;
 use super::{signed_i32, u8_to_bool, AisMessageType};
 use crate::errors::*;
 use nom::bits::{bits, complete::take as take_bits};

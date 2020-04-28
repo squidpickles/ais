@@ -25,7 +25,7 @@ BaseStationReport(BaseStationReport { message_type: 4, repeat_indicator: 0, mmsi
 ## Use it as a library
 Here's a very simple example that parses a single NMEA sentence. In this case, it contains an Aid to Navigation Report:
  ```rust
-use ais::sentence::{AisFragments, AisParser};
+use ais::{AisFragments, AisParser};
 use ais::messages::AisMessage;
 
 // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.

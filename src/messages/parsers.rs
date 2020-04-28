@@ -1,41 +1,11 @@
+//! Common parsers
 use super::sixbit_to_ascii;
-use crate::errors::*;
 
 use nom::bits::complete::take as take_bits;
 use nom::combinator::map_res;
 use nom::error::ErrorKind;
 use nom::multi::count;
 use nom::IResult;
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum EpfdType {
-    Gps,
-    Glonass,
-    CombinedGpsAndGlonass,
-    LoranC,
-    Chayka,
-    IntegratedNavigationSystem,
-    Surveyed,
-    Galileo,
-}
-
-impl EpfdType {
-    pub fn parse(data: u8) -> Result<Option<Self>> {
-        match data {
-            0 => Ok(None),
-            1 => Ok(Some(EpfdType::Gps)),
-            2 => Ok(Some(EpfdType::Glonass)),
-            3 => Ok(Some(EpfdType::CombinedGpsAndGlonass)),
-            4 => Ok(Some(EpfdType::LoranC)),
-            5 => Ok(Some(EpfdType::Chayka)),
-            6 => Ok(Some(EpfdType::IntegratedNavigationSystem)),
-            7 => Ok(Some(EpfdType::Surveyed)),
-            8 => Ok(Some(EpfdType::Galileo)),
-            15 => Ok(None),
-            _ => Err(format!("Unknown Epfd type: {}", data).into()),
-        }
-    }
-}
 
 pub fn parse_year(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u16>> {
     map_res(take_bits::<_, _, _, (_, _)>(14u16), |year| match year {
@@ -75,6 +45,11 @@ pub fn parse_minsec(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>>
         60 => Ok(None),
         _ => Err("Invalid minute/second"),
     })(data)
+}
+
+/// Returns the number of bits available to read, without otherwise modifying anything
+pub fn remaining_bits(data: (&[u8], usize)) -> usize {
+    data.0.len() * 8 - data.1
 }
 
 /// Converts a number of bits, represented as 6-bit ASCII, into a String

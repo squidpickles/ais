@@ -1,5 +1,7 @@
-use super::common::*;
+//! Aid to Navigation Report (type 21)
 use super::navigation::*;
+use super::parsers::*;
+use super::types::*;
 use super::{signed_i32, u8_to_bool, AisMessageType};
 use crate::errors::*;
 use nom::bits::{bits, complete::take as take_bits};

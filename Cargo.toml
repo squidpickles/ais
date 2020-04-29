@@ -1,6 +1,6 @@
 [package]
 name = "ais"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Kevin Rauwolf <sweetpea-git@tentacle.net>"]
 description = "An AIS parser library"
 homepage = "https://github.com/squidpickles/ais"

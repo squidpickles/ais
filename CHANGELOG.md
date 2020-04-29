@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2020-04-28
+### Changed
+- Many internal types with restricted inputs panic rather than returning errors
+- Out-of-range values coming from parsed data now get passed through as unknown, rather than returning errors
+- UTC hour is no longer Option
+
 ## [0.3.0] - 2020-04-28
 ### Added
 - Support for type 24 messages

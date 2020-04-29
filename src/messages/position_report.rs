@@ -1,10 +1,11 @@
 //! Position Report (types 1-3)
 use super::navigation::*;
+use super::parsers::*;
 use super::radio_status::{parse_radio, RadioStatus};
-use super::{signed_i32, u8_to_bool, AisMessageType};
-use crate::errors::*;
+use super::AisMessageType;
+use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::{map, map_res};
+use nom::combinator::map;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -43,22 +44,21 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], PositionReport> {
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
         let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
         let (data, navigation_status) =
-            map_res(take_bits::<_, _, _, (_, _)>(4u8), NavigationStatus::parse)(data)?;
+            map(take_bits::<_, _, _, (_, _)>(4u8), NavigationStatus::parse)(data)?;
         let (data, rate_of_turn) = map(take_bits::<_, _, _, (_, _)>(8u8), RateOfTurn::parse)(data)?;
         let (data, speed_over_ground) =
-            map_res(take_bits::<_, _, _, (_, _)>(10u16), parse_speed_over_ground)(data)?;
+            map(take_bits::<_, _, _, (_, _)>(10u16), parse_speed_over_ground)(data)?;
         let (data, position_accuracy) =
-            map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
-        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
-        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
+            map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
         let (data, course_over_ground) = map(take_bits::<_, _, _, (_, _)>(12u16), parse_cog)(data)?;
-        let (data, true_heading) =
-            map_res(take_bits::<_, _, _, (_, _)>(9u16), parse_heading)(data)?;
+        let (data, true_heading) = map(take_bits::<_, _, _, (_, _)>(9u16), parse_heading)(data)?;
         let (data, timestamp) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, maneuver_indicator) =
             map(take_bits::<_, _, _, (_, _)>(2u8), ManeuverIndicator::parse)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, (_, _)>(3u8)(data)?;
-        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         let (data, radio_status) = parse_radio(data, message_type)?;
         Ok((
             data,
@@ -100,28 +100,29 @@ pub enum NavigationStatus {
     Reserved02,
     Reserved03,
     AisSartIsActive,
+    Unknown(u8),
 }
 
 impl NavigationStatus {
-    fn parse(data: u8) -> Result<Option<Self>> {
+    fn parse(data: u8) -> Option<Self> {
         match data {
-            0 => Ok(Some(NavigationStatus::UnderWayUsingEngine)),
-            1 => Ok(Some(NavigationStatus::AtAnchor)),
-            2 => Ok(Some(NavigationStatus::NotUnderCommand)),
-            3 => Ok(Some(NavigationStatus::RestrictedManouverability)),
-            4 => Ok(Some(NavigationStatus::ConstrainedByDraught)),
-            5 => Ok(Some(NavigationStatus::Moored)),
-            6 => Ok(Some(NavigationStatus::Aground)),
-            7 => Ok(Some(NavigationStatus::EngagedInFishing)),
-            8 => Ok(Some(NavigationStatus::UnderWaySailing)),
-            9 => Ok(Some(NavigationStatus::ReservedForHSC)),
-            10 => Ok(Some(NavigationStatus::ReservedForWIG)),
-            11 => Ok(Some(NavigationStatus::Reserved01)),
-            12 => Ok(Some(NavigationStatus::Reserved02)),
-            13 => Ok(Some(NavigationStatus::Reserved03)),
-            14 => Ok(Some(NavigationStatus::AisSartIsActive)),
-            15 => Ok(None),
-            _ => Err(format!("Unknown navigation status: {}", data).into()),
+            0 => Some(Self::UnderWayUsingEngine),
+            1 => Some(Self::AtAnchor),
+            2 => Some(Self::NotUnderCommand),
+            3 => Some(Self::RestrictedManouverability),
+            4 => Some(Self::ConstrainedByDraught),
+            5 => Some(Self::Moored),
+            6 => Some(Self::Aground),
+            7 => Some(Self::EngagedInFishing),
+            8 => Some(Self::UnderWaySailing),
+            9 => Some(Self::ReservedForHSC),
+            10 => Some(Self::ReservedForWIG),
+            11 => Some(Self::Reserved01),
+            12 => Some(Self::Reserved02),
+            13 => Some(Self::Reserved03),
+            14 => Some(Self::AisSartIsActive),
+            15 => None,
+            _ => Some(Self::Unknown(data)),
         }
     }
 }

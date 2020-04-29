@@ -1,26 +1,21 @@
-use crate::errors::*;
-
-pub fn parse_speed_over_ground(data: u16) -> Result<Option<f32>> {
+pub fn parse_speed_over_ground(data: u16) -> Option<f32> {
     match data {
-        0..=1022 => Ok(Some(data as f32 / 10.0)),
-        1023 => Ok(None),
-        _ => Err(format!("Invalid speed over ground: {}", data).into()),
+        1023 => None,
+        _ => Some(data as f32 / 10.0),
     }
 }
 
-pub fn parse_longitude(data: i32) -> Result<Option<f32>> {
+pub fn parse_longitude(data: i32) -> Option<f32> {
     match data {
-        -108_000_000..=108_000_000 => Ok(Some(data as f32 / 600_000.0)),
-        108_600_000 => Ok(None),
-        _ => Err(format!("Invalid longitude: {}", data as f32 / 600_000.0).into()),
+        108_600_000 => None,
+        _ => Some(data as f32 / 600_000.0),
     }
 }
 
-pub fn parse_latitude(data: i32) -> Result<Option<f32>> {
+pub fn parse_latitude(data: i32) -> Option<f32> {
     match data {
-        -54_000_000..=54_000_000 => Ok(Some(data as f32 / 600_000.0)),
-        54_600_000 => Ok(None),
-        _ => Err(format!("Invalid latitude: {}", data as f32 / 600_000.0).into()),
+        54_600_000 => None,
+        _ => Some(data as f32 / 600_000.0),
     }
 }
 
@@ -31,11 +26,10 @@ pub fn parse_cog(data: u16) -> Option<f32> {
     }
 }
 
-pub fn parse_heading(data: u16) -> Result<Option<u16>> {
+pub fn parse_heading(data: u16) -> Option<u16> {
     match data {
-        0..=359 => Ok(Some(data)),
-        511 => Ok(None),
-        _ => Err(format!("Invalid heading: {}", data).into()),
+        511 => None,
+        _ => Some(data),
     }
 }
 
@@ -46,11 +40,11 @@ pub enum Accuracy {
 }
 
 impl Accuracy {
-    pub fn parse(data: u8) -> Result<Self> {
+    pub fn parse(data: u8) -> Self {
         match data {
-            0 => Ok(Accuracy::Unaugmented),
-            1 => Ok(Accuracy::DGPS),
-            _ => Err("Unknown accuracy value".into()),
+            0 => Self::Unaugmented,
+            1 => Self::DGPS,
+            _ => unreachable!(),
         }
     }
 }

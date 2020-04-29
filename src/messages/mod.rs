@@ -1,8 +1,5 @@
 //! Specific AIS message types
-use crate::errors::*;
-use nom::bits::{bits, complete::take as take_bits};
-use nom::IResult;
-use std::cmp;
+use crate::errors::Result;
 
 pub mod aid_to_navigation_report;
 pub mod base_station_report;
@@ -13,6 +10,8 @@ mod radio_status;
 pub mod static_and_voyage_related_data;
 pub mod static_data_report;
 mod types;
+
+pub use parsers::message_type;
 
 /// Contains all structured messages recognized by this crate
 #[derive(Debug, PartialEq)]
@@ -30,16 +29,6 @@ pub trait AisMessageType<'a>: Sized {
     fn name(&self) -> &'static str;
     /// Converts a raw AIS message into a structured, queryable version
     fn parse(data: &'a [u8]) -> Result<Self>;
-}
-
-/// Gets the message type from the first byte of supplied data
-pub fn message_type(data: &[u8]) -> IResult<&[u8], u8> {
-    bits(message_type_bits)(data)
-}
-
-/// Gets the message type from the current bitstream position
-pub fn message_type_bits(data: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
-    take_bits(6u8)(data)
 }
 
 /// Given an unarmored bitstream (see [`unarmor()`](fn.unarmor.html) for details), this
@@ -66,37 +55,6 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         _ => Err(format!("Unimplemented type: {}", result).into()),
     }
-}
-
-#[inline]
-fn sixbit_to_ascii(data: u8) -> Result<u8> {
-    match data {
-        0..=31 => Ok(data + 64),
-        32..=63 => Ok(data),
-        _ => Err(format!("Illegal 6-bit character: {}", data).into()),
-    }
-}
-
-#[inline]
-fn u8_to_bool(data: u8) -> Result<bool> {
-    match data {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(format!("Invalid boolean value: {}", data).into()),
-    }
-}
-
-fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
-    assert!(len <= ::std::mem::size_of::<i32>() * 8);
-    let (input, num) = take_bits::<_, i32, _, (_, _)>(len)(input)?;
-    let mask = !0i32 << len;
-    Ok((
-        input,
-        match (num << (32 - len)).leading_zeros() {
-            0 => num | mask,
-            _ => !mask & num,
-        },
-    ))
 }
 
 /// Converts 8-bit ASCII (armored) into packed 6-bit (unarmored) sequences.
@@ -142,7 +100,7 @@ pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
         let final_idx = output.len() - 1;
         {
             let byte = &mut output[final_idx];
-            let shift = (8 - bits_in_final_byte) + cmp::min(fill_bits, bits_in_final_byte);
+            let shift = (8 - bits_in_final_byte) + std::cmp::min(fill_bits, bits_in_final_byte);
             *byte &= match shift {
                 0..=7 => 0xffu8 << shift,
                 8 => 0x0u8,

@@ -1,7 +1,6 @@
-use super::u8_to_bool;
-use crate::errors::Result;
+use super::parsers::u8_to_bool;
 use nom::bits::complete::take as take_bits;
-use nom::combinator::map_res;
+use nom::combinator::map;
 use nom::error::ErrorKind;
 use nom::IResult;
 
@@ -17,16 +16,18 @@ pub enum SyncState {
     UtcIndirect,
     BaseStation,
     NumberOfReceivedStations,
+    Unknown(u8),
 }
 
 impl SyncState {
-    pub fn parse(data: u8) -> Result<Self> {
+    pub fn parse(data: u8) -> Self {
         match data {
-            0 => Ok(SyncState::UtcDirect),
-            1 => Ok(SyncState::UtcIndirect),
-            2 => Ok(SyncState::BaseStation),
-            3 => Ok(SyncState::NumberOfReceivedStations),
-            _ => Err(format!("Unknown sync state: {}", data).into()),
+            0 => SyncState::UtcDirect,
+            1 => SyncState::UtcIndirect,
+            2 => SyncState::BaseStation,
+            3 => SyncState::NumberOfReceivedStations,
+            // TODO: maybe this should panic?
+            _ => Self::Unknown(data),
         }
     }
 }
@@ -83,8 +84,7 @@ pub struct SotdmaMessage {
 
 impl SotdmaMessage {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), RadioStatus> {
-        let (data, sync_state) =
-            map_res(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
+        let (data, sync_state) = map(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
         let (data, slot_timeout) = take_bits::<_, _, _, (_, _)>(3u8)(data)?;
         let (data, sub_message) = SubMessage::parse(data, slot_timeout)?;
         Ok((
@@ -108,11 +108,10 @@ pub struct ItdmaMessage {
 
 impl ItdmaMessage {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), RadioStatus> {
-        let (data, sync_state) =
-            map_res(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
+        let (data, sync_state) = map(take_bits::<_, _, _, (_, _)>(2u8), SyncState::parse)(data)?;
         let (data, slot_increment) = take_bits::<_, _, _, (_, _)>(13u16)(data)?;
         let (data, num_slots) = take_bits::<_, _, _, (_, _)>(3u8)(data)?;
-        let (data, keep) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, keep) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         Ok((
             data,
             RadioStatus::Itdma(Self {

@@ -2,9 +2,9 @@
 use super::parsers::*;
 use super::types::*;
 use super::AisMessageType;
-use crate::errors::*;
+use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::map_res;
+use nom::combinator::map;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -50,6 +50,7 @@ pub enum MessagePart {
         dimension_to_port: u16,
         dimension_to_starboard: u16,
     },
+    Unknown(u8),
 }
 
 fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePart> {
@@ -65,8 +66,7 @@ fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePa
         }
         1 => {
             // Part B
-            let (data, ship_type) =
-                map_res(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
+            let (data, ship_type) = map(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
             // vendor ID sometimes is a long string, and sometimes is a short string with attached model
             // and serial number. We'll parse both ways and present them
             let (data, vendor_id) = parse_6bit_ascii(data, 18)?;
@@ -95,8 +95,8 @@ fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePa
                 },
             ))
         }
-        2 | 3 => Err(nom::Err::Error((data, nom::error::ErrorKind::Digit))),
-        _ => panic!("Invalid 2-bit number"),
+        2 | 3 => Ok((data, MessagePart::Unknown(part_number))),
+        _ => unreachable!(),
     }
 }
 

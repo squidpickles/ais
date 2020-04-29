@@ -3,10 +3,10 @@ use super::navigation::*;
 use super::parsers::*;
 use super::radio_status::{parse_radio, RadioStatus};
 use super::types::*;
-use super::{signed_i32, u8_to_bool, AisMessageType};
-use crate::errors::*;
+use super::AisMessageType;
+use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::map_res;
+use nom::combinator::map;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -17,7 +17,7 @@ pub struct BaseStationReport {
     pub year: Option<u16>,
     pub month: Option<u8>,
     pub day: Option<u8>,
-    pub hour: Option<u8>,
+    pub hour: u8,
     pub minute: Option<u8>,
     pub second: Option<u8>,
     pub fix_quality: Accuracy,
@@ -50,13 +50,12 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], BaseStationReport> {
         let (data, hour) = parse_hour(data)?;
         let (data, minute) = parse_minsec(data)?;
         let (data, second) = parse_minsec(data)?;
-        let (data, fix_quality) =
-            map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
-        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
-        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
-        let (data, epfd_type) = map_res(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, fix_quality) = map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
+        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, (_, _)>(10u8)(data)?;
-        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         let (data, radio_status) = parse_radio(data, message_type)?;
         Ok((
             data,
@@ -100,7 +99,7 @@ mod tests {
         assert_eq!(message.year, Some(2017));
         assert_eq!(message.month, Some(12));
         assert_eq!(message.day, Some(27));
-        assert_eq!(message.hour, Some(17));
+        assert_eq!(message.hour, 17);
         assert_eq!(message.minute, Some(15));
         assert_eq!(message.second, Some(11));
         assert_eq!(message.fix_quality, Accuracy::DGPS);
@@ -128,7 +127,7 @@ mod tests {
         assert_eq!(message.year, Some(2007));
         assert_eq!(message.month, Some(5));
         assert_eq!(message.day, Some(14));
-        assert_eq!(message.hour, Some(19));
+        assert_eq!(message.hour, 19);
         assert_eq!(message.minute, Some(57));
         assert_eq!(message.second, Some(39));
         assert_eq!(message.fix_quality, Accuracy::DGPS);

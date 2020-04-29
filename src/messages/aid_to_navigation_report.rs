@@ -2,10 +2,10 @@
 use super::navigation::*;
 use super::parsers::*;
 use super::types::*;
-use super::{signed_i32, u8_to_bool, AisMessageType};
-use crate::errors::*;
+use super::AisMessageType;
+use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::map_res;
+use nom::combinator::map;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -41,44 +41,45 @@ pub enum NavaidType {
     SafeWater,
     SpecialMark,
     LightVesselOrLanbyOrRigs,
+    Unknown(u8),
 }
 
 impl NavaidType {
-    pub fn parse(data: u8) -> Result<Option<Self>> {
+    pub fn parse(data: u8) -> Option<Self> {
         match data {
-            0 => Ok(None),
-            1 => Ok(Some(NavaidType::ReferencePoint)),
-            2 => Ok(Some(NavaidType::Racon)),
-            3 => Ok(Some(NavaidType::FixedStructureOffShore)),
-            4 => Ok(Some(NavaidType::Spare)),
-            5 => Ok(Some(NavaidType::LightWithoutSectors)),
-            6 => Ok(Some(NavaidType::LightWithSectors)),
-            7 => Ok(Some(NavaidType::LeadingLightFront)),
-            8 => Ok(Some(NavaidType::LeadingLightRear)),
-            9 => Ok(Some(NavaidType::BeaconCardinalN)),
-            10 => Ok(Some(NavaidType::BeaconCardinalE)),
-            11 => Ok(Some(NavaidType::BeaconCardinalS)),
-            12 => Ok(Some(NavaidType::BeaconCardinalW)),
-            13 => Ok(Some(NavaidType::BeaconPortHand)),
-            14 => Ok(Some(NavaidType::BeaconStarboardHand)),
-            15 => Ok(Some(NavaidType::BeaconPreferredChannelPortHand)),
-            16 => Ok(Some(NavaidType::BeaconPreferredChannelStarboardHand)),
-            17 => Ok(Some(NavaidType::BeaconIsolatedDanger)),
-            18 => Ok(Some(NavaidType::BeaconSafeWater)),
-            19 => Ok(Some(NavaidType::BeaconSpecialMark)),
-            20 => Ok(Some(NavaidType::CardinalMarkN)),
-            21 => Ok(Some(NavaidType::CardinalMarkE)),
-            22 => Ok(Some(NavaidType::CardinalMarkS)),
-            23 => Ok(Some(NavaidType::CardinalMarkW)),
-            24 => Ok(Some(NavaidType::PortHandMark)),
-            25 => Ok(Some(NavaidType::StarboardHandMark)),
-            26 => Ok(Some(NavaidType::PreferredChannelPortHand)),
-            27 => Ok(Some(NavaidType::PreferredChannelStarboardHand)),
-            28 => Ok(Some(NavaidType::IsolatedDanger)),
-            29 => Ok(Some(NavaidType::SafeWater)),
-            30 => Ok(Some(NavaidType::SpecialMark)),
-            31 => Ok(Some(NavaidType::LightVesselOrLanbyOrRigs)),
-            _ => Err(format!("Unknown navaid type: {}", data).into()),
+            0 => None,
+            1 => Some(Self::ReferencePoint),
+            2 => Some(Self::Racon),
+            3 => Some(Self::FixedStructureOffShore),
+            4 => Some(Self::Spare),
+            5 => Some(Self::LightWithoutSectors),
+            6 => Some(Self::LightWithSectors),
+            7 => Some(Self::LeadingLightFront),
+            8 => Some(Self::LeadingLightRear),
+            9 => Some(Self::BeaconCardinalN),
+            10 => Some(Self::BeaconCardinalE),
+            11 => Some(Self::BeaconCardinalS),
+            12 => Some(Self::BeaconCardinalW),
+            13 => Some(Self::BeaconPortHand),
+            14 => Some(Self::BeaconStarboardHand),
+            15 => Some(Self::BeaconPreferredChannelPortHand),
+            16 => Some(Self::BeaconPreferredChannelStarboardHand),
+            17 => Some(Self::BeaconIsolatedDanger),
+            18 => Some(Self::BeaconSafeWater),
+            19 => Some(Self::BeaconSpecialMark),
+            20 => Some(Self::CardinalMarkN),
+            21 => Some(Self::CardinalMarkE),
+            22 => Some(Self::CardinalMarkS),
+            23 => Some(Self::CardinalMarkW),
+            24 => Some(Self::PortHandMark),
+            25 => Some(Self::StarboardHandMark),
+            26 => Some(Self::PreferredChannelPortHand),
+            27 => Some(Self::PreferredChannelStarboardHand),
+            28 => Some(Self::IsolatedDanger),
+            29 => Some(Self::SafeWater),
+            30 => Some(Self::SpecialMark),
+            31 => Some(Self::LightVesselOrLanbyOrRigs),
+            _ => Some(Self::Unknown(data)),
         }
     }
 }
@@ -122,22 +123,22 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
         let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
         let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
         let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, aid_type) = map_res(take_bits::<_, _, _, (_, _)>(5u8), NavaidType::parse)(data)?;
+        let (data, aid_type) = map(take_bits::<_, _, _, (_, _)>(5u8), NavaidType::parse)(data)?;
         let (data, name) = parse_6bit_ascii(data, 120)?;
-        let (data, accuracy) = map_res(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
-        let (data, longitude) = map_res(|data| signed_i32(data, 28), parse_longitude)(data)?;
-        let (data, latitude) = map_res(|data| signed_i32(data, 27), parse_latitude)(data)?;
+        let (data, accuracy) = map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
+        let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
         let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
         let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
         let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
         let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, epfd_type) = map_res(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
         let (data, utc_second) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, off_position) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, off_position) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         let (data, regional_reserved) = take_bits::<_, _, _, (_, _)>(8u8)(data)?;
-        let (data, raim) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, virtual_aid) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, assigned_mode) = map_res(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, virtual_aid) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, assigned_mode) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, (_, _)>(1u8)(data)?;
         Ok((
             data,

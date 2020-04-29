@@ -2,9 +2,9 @@
 use super::parsers::*;
 use super::types::*;
 use super::AisMessageType;
-use crate::errors::*;
+use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
-use nom::combinator::{map, map_res};
+use nom::combinator::map;
 use nom::IResult;
 
 #[derive(Debug, PartialEq)]
@@ -24,7 +24,7 @@ pub struct StaticAndVoyageRelatedData {
     pub epfd_type: Option<EpfdType>,
     pub eta_month_utc: Option<u8>,
     pub eta_day_utc: Option<u8>,
-    pub eta_hour_utc: Option<u8>,
+    pub eta_hour_utc: u8,
     pub eta_minute_utc: Option<u8>,
     pub draught: f32,
     pub destination: String,
@@ -51,12 +51,12 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
         let (data, imo_number) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
         let (data, callsign) = parse_6bit_ascii(data, 42)?;
         let (data, vessel_name) = parse_6bit_ascii(data, 120)?;
-        let (data, ship_type) = map_res(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
+        let (data, ship_type) = map(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
         let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
         let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
         let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
         let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, epfd_type) = map_res(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
         let (data, eta_month_utc) = parse_month(data)?;
         let (data, eta_day_utc) = parse_day(data)?;
         let (data, eta_hour_utc) = parse_hour(data)?;

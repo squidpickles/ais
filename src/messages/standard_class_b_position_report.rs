@@ -1,4 +1,4 @@
-//! Position Report (types 1-3)
+//! Standard Class B Position Report (type 18)
 use super::navigation::*;
 use super::parsers::*;
 use super::radio_status::{ItdmaMessage, RadioStatus, SotdmaMessage};

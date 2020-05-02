@@ -54,7 +54,7 @@ impl CarrierSense {
         match val {
             0 => Self::Sotdma,
             1 => Self::CarrierSense,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -70,7 +70,7 @@ impl AssignedMode {
         match val {
             0 => Self::Autonomous,
             1 => Self::Assigned,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -103,7 +103,7 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], StandardClassBPositionReport> {
         let (data, radio_status) = match cs_selector {
             0 => SotdmaMessage::parse(data)?,
             1 => ItdmaMessage::parse(data)?,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         Ok((
             data,
@@ -135,7 +135,7 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], StandardClassBPositionReport> {
 mod tests {
     #![allow(clippy::unreadable_literal)]
     use super::*;
-    use crate::messages::radio_status::{SubMessage, SyncState};
+    use crate::messages::radio_status::SyncState;
     use crate::test_helpers::*;
 
     #[test]

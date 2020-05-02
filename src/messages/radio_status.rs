@@ -53,7 +53,7 @@ impl SubMessage {
                 let (data, slot_number) = Self::subm_u16(input)?;
                 Ok((data, SubMessage::ReceivedStations(slot_number)))
             }
-            _ => Err(nom::Err::Error((input, ErrorKind::Digit))),
+            _ => unreachable!()
         }
     }
 

@@ -54,7 +54,7 @@ impl CarrierSense {
         match val {
             0 => Self::Sotdma,
             1 => Self::CarrierSense,
-            _ => panic!("Expected 1 bit value here"),
+            _ => unreachable!()
         }
     }
 }
@@ -70,7 +70,7 @@ impl AssignedMode {
         match val {
             0 => Self::Autonomous,
             1 => Self::Assigned,
-            _ => panic!("Expected 1 bit value here"),
+            _ => unreachable!()
         }
     }
 }
@@ -103,7 +103,7 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], StandardClassBPositionReport> {
         let (data, radio_status) = match cs_selector {
             0 => SotdmaMessage::parse(data)?,
             1 => ItdmaMessage::parse(data)?,
-            _ => panic!("Single bit value expected"),
+            _ => unreachable!()
         };
         Ok((
             data,

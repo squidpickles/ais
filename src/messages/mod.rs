@@ -4,6 +4,7 @@ use crate::errors::Result;
 pub mod aid_to_navigation_report;
 pub mod base_station_report;
 pub mod binary_broadcast_message;
+pub mod data_link_management_message;
 mod navigation;
 mod parsers;
 pub mod position_report;
@@ -23,6 +24,7 @@ pub enum AisMessage {
     BinaryBroadcastMessage(binary_broadcast_message::BinaryBroadcastMessage),
     StaticAndVoyageRelatedData(static_and_voyage_related_data::StaticAndVoyageRelatedData),
     StandardClassBPositionReport(standard_class_b_position_report::StandardClassBPositionReport),
+    DataLinkManagementMessage(data_link_management_message::DataLinkManagementMessage),
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
     StaticDataReport(static_data_report::StaticDataReport),
 }
@@ -56,6 +58,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         18 => Ok(AisMessage::StandardClassBPositionReport(
             standard_class_b_position_report::StandardClassBPositionReport::parse(&unarmored)?,
+        )),
+        20 => Ok(AisMessage::DataLinkManagementMessage(
+            data_link_management_message::DataLinkManagementMessage::parse(&unarmored)?,
         )),
         21 => Ok(AisMessage::AidToNavigationReport(
             aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,

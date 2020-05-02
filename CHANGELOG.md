@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2020-05-01
+### Added
+- Support for message type 18 (Static Class B Position Report)
+### Changed
+- Utility renamed from `nmea` to `ais`
+
 ## [0.4.0] - 2020-04-28
 ### Changed
 - Many internal types with restricted inputs panic rather than returning errors

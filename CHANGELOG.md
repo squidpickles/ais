@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2020-05-02
+### Added
+- Support for message type 8 (Binary Broadcast Message). Note, the binary payload is not decoded yet.
+- Support for message type 20 (Data Link Management Message)
+- Support for message type 15 (Interrogation)
+
 ## [0.5.0] - 2020-05-01
 ### Added
 - Support for message type 18 (Static Class B Position Report)

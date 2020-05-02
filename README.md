@@ -57,8 +57,11 @@ Right now, only a few common types are supported. They are:
 
 - Position Report (types 1-3)
 - Base Station Report (type 4)
-- Aid to Navigation Report (type 21)
 - Static and Voyage Related Data (type 5)
+- Binary Broadcast Message (type 8)
+- Interrogation (type 15)
+- Data Link Management Message (type 20)
+- Aid to Navigation Report (type 21)
 - Static Data Report (type 24)
 
 Others to come soon, I hope!

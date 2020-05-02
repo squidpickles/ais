@@ -5,6 +5,7 @@ pub mod aid_to_navigation_report;
 pub mod base_station_report;
 pub mod binary_broadcast_message;
 pub mod data_link_management_message;
+pub mod interrogation;
 mod navigation;
 mod parsers;
 pub mod position_report;
@@ -22,6 +23,7 @@ pub enum AisMessage {
     PositionReport(position_report::PositionReport),
     BaseStationReport(base_station_report::BaseStationReport),
     BinaryBroadcastMessage(binary_broadcast_message::BinaryBroadcastMessage),
+    Interrogation(interrogation::Interrogation),
     StaticAndVoyageRelatedData(static_and_voyage_related_data::StaticAndVoyageRelatedData),
     StandardClassBPositionReport(standard_class_b_position_report::StandardClassBPositionReport),
     DataLinkManagementMessage(data_link_management_message::DataLinkManagementMessage),
@@ -55,6 +57,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
             binary_broadcast_message::BinaryBroadcastMessage::parse(&unarmored)?,
+        )),
+        15 => Ok(AisMessage::Interrogation(
+            interrogation::Interrogation::parse(&unarmored)?,
         )),
         18 => Ok(AisMessage::StandardClassBPositionReport(
             standard_class_b_position_report::StandardClassBPositionReport::parse(&unarmored)?,

@@ -90,6 +90,7 @@ mod tests {
 
     #[test]
     fn test_meteorological_hydrological_old() {
+        // !AIVDM,1,1,,A,8@2<HW@0BkdhF0dcH5R`Q@kDJjD;WwfRwwwwwwwwwwwwwwwwwwwwwwwwwt0,2*60
         let bytestream = b"8@2<HW@0BkdhF0dcH5R`Q@kDJjD;WwfRwwwwwwwwwwwwwwwwwwwwwwwwwt0";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let report = BinaryBroadcastMessage::parse(&bitstream).unwrap();
@@ -102,6 +103,7 @@ mod tests {
 
     #[test]
     fn test_meteorological_hydrological_new() {
+        // !AIVDM,1,1,,A,8@2R5Ph0GhEa?1bGBviEOwvlFR06EuOwgqriwnSwe7wvlOwwsAwwnSGmwvwt,0*64
         let bytestream = b"8@2R5Ph0GhEa?1bGBviEOwvlFR06EuOwgqriwnSwe7wvlOwwsAwwnSGmwvwt";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
         let report = BinaryBroadcastMessage::parse(&bitstream).unwrap();

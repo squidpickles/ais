@@ -54,31 +54,31 @@ pub enum MessagePart {
 }
 
 fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePart> {
-    let (data, part_number) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
+    let (data, part_number) = take_bits(2u8)(data)?;
     match part_number {
         0 => {
             // Part A
             let (data, vessel_name) = parse_6bit_ascii(data, 120)?;
             // Senders occasionally skip sending the spare bits, so this is optional
             let (data, _spare) =
-                take_bits::<_, u8, _, (_, _)>(std::cmp::min(remaining_bits(data), 7))(data)?;
+                take_bits::<_, u8, _, _>(std::cmp::min(remaining_bits(data), 7))(data)?;
             Ok((data, MessagePart::PartA { vessel_name }))
         }
         1 => {
             // Part B
-            let (data, ship_type) = map(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
+            let (data, ship_type) = map(take_bits(8u8), ShipType::parse)(data)?;
             // vendor ID sometimes is a long string, and sometimes is a short string with attached model
             // and serial number. We'll parse both ways and present them
             let (data, vendor_id) = parse_6bit_ascii(data, 18)?;
             let (_, model_serial) = parse_6bit_ascii(data, 24)?;
-            let (data, unit_model_code) = take_bits::<_, _, _, (_, _)>(4u8)(data)?;
-            let (data, serial_number) = take_bits::<_, _, _, (_, _)>(20u32)(data)?;
+            let (data, unit_model_code) = take_bits(4u8)(data)?;
+            let (data, serial_number) = take_bits(20u32)(data)?;
             let (data, callsign) = parse_6bit_ascii(data, 42)?;
-            let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-            let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-            let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-            let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-            let (data, _spare) = take_bits::<_, u8, _, (_, _)>(6u8)(data)?;
+            let (data, dimension_to_bow) = take_bits(9u16)(data)?;
+            let (data, dimension_to_stern) = take_bits(9u16)(data)?;
+            let (data, dimension_to_port) = take_bits(6u16)(data)?;
+            let (data, dimension_to_starboard) = take_bits(6u16)(data)?;
+            let (data, _spare) = take_bits::<_, u8, _, _>(6u8)(data)?;
             Ok((
                 data,
                 MessagePart::PartB {
@@ -102,9 +102,9 @@ fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePa
 
 fn parse_message(data: &[u8]) -> IResult<&[u8], StaticDataReport> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, u32, _, (_, _)>(30u32)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
         let (data, message_part) = parse_message_part(data)?;
         Ok((
             data,

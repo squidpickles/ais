@@ -40,3 +40,11 @@ impl From<nom::Err<(&[u8], nom::error::ErrorKind)>> for Error {
         }
     }
 }
+
+impl<T: std::fmt::Debug> From<nom::Err<nom::error::Error<T>>> for Error {
+    fn from(err: nom::Err<nom::error::Error<T>>) -> Self {
+        Self::Nmea {
+            msg: format!("{:?}", err),
+        }
+    }
+}

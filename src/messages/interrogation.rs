@@ -13,9 +13,9 @@ pub struct Message {
 
 impl Message {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
         let (data, slot_offset) = if remaining_bits(data) >= 12 {
-            let (data, slot_offset) = take_bits::<_, _, _, (_, _)>(12u16)(data)?;
+            let (data, slot_offset) = take_bits(12u16)(data)?;
             if slot_offset == 0 {
                 (data, None)
             } else {
@@ -42,12 +42,12 @@ pub struct Station {
 
 impl Station {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
         let mut messages = Vec::new();
         let (data, message) = Message::parse(data)?;
         messages.push(message);
         let data = if remaining_bits(data) >= 8 {
-            let (data, _spare) = take_bits::<_, u8, _, (_, _)>(2u8)(data)?;
+            let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
             let (data, message) = Message::parse(data)?;
             if message.message_type != 0 || message.slot_offset.is_some() {
                 messages.push(message);
@@ -81,10 +81,10 @@ impl<'a> AisMessageType<'a> for Interrogation {
 
 fn parse_message(data: &[u8]) -> IResult<&[u8], Interrogation> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(2u8)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
         let mut stations = Vec::new();
         let (data, station) = Station::parse(data)?;
         stations.push(station);
@@ -92,7 +92,7 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], Interrogation> {
         let data = if remaining >= 30 {
             let (data, station) = Station::parse(data)?;
             stations.push(station);
-            take_bits::<_, u8, _, (_, _)>(2u8)(data)?.0
+            take_bits::<_, u8, _, _>(2u8)(data)?.0
         } else {
             (<&[u8]>::default(), 0)
         };

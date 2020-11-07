@@ -8,32 +8,32 @@ use nom::multi::count;
 use nom::IResult;
 
 pub fn parse_year(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u16>> {
-    map(take_bits::<_, _, _, (_, _)>(14u16), |year| match year {
+    map(take_bits(14u16), |year| match year {
         0 => None,
         _ => Some(year),
     })(data)
 }
 
 pub fn parse_month(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map(take_bits::<_, _, _, (_, _)>(4u8), |month| match month {
+    map(take_bits(4u8), |month| match month {
         0 => None,
         _ => Some(month),
     })(data)
 }
 
 pub fn parse_day(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map(take_bits::<_, _, _, (_, _)>(5u8), |day| match day {
+    map(take_bits(5u8), |day| match day {
         0 => None,
         _ => Some(day),
     })(data)
 }
 
 pub fn parse_hour(data: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
-    take_bits::<_, _, _, (_, _)>(5u8)(data)
+    take_bits(5u8)(data)
 }
 
 pub fn parse_minsec(data: (&[u8], usize)) -> IResult<(&[u8], usize), Option<u8>> {
-    map(take_bits::<_, _, _, (_, _)>(6u8), |minsec| match minsec {
+    map(take_bits(6u8), |minsec| match minsec {
         60 => None,
         _ => Some(minsec),
     })(data)
@@ -47,20 +47,18 @@ pub fn remaining_bits(data: (&[u8], usize)) -> usize {
 /// Converts a number of bits, represented as 6-bit ASCII, into a String
 pub fn parse_6bit_ascii(input: (&[u8], usize), size: usize) -> IResult<(&[u8], usize), String> {
     let char_count = size / 6;
-    let (input, bytes) = count(
-        map_res(take_bits::<_, _, _, (_, _)>(6u8), sixbit_to_ascii),
-        char_count,
-    )(input)?;
-    match ::std::str::from_utf8(&bytes) {
-        Ok(val) => Ok((
-            input,
-            val.trim_start()
-                .trim_end_matches('@')
-                .trim_end()
-                .to_string(),
-        )),
-        Err(_) => Err(nom::Err::Error((input, ErrorKind::AlphaNumeric))),
-    }
+    let (input, bytes) = count(map_res(take_bits(6u8), sixbit_to_ascii), char_count)(input)?;
+    std::str::from_utf8(&bytes)
+        .map(|val| {
+            (
+                input,
+                val.trim_start()
+                    .trim_end_matches('@')
+                    .trim_end()
+                    .to_string(),
+            )
+        })
+        .map_err(|_| nom::Err::Failure(nom::error::Error::new(input, ErrorKind::AlphaNumeric)))
 }
 
 /// Gets the message type from the first byte of supplied data
@@ -97,7 +95,7 @@ pub fn u8_to_bool(data: u8) -> bool {
 
 pub fn signed_i32(input: (&[u8], usize), len: usize) -> IResult<(&[u8], usize), i32> {
     assert!(len <= ::std::mem::size_of::<i32>() * 8);
-    let (input, num) = take_bits::<_, i32, _, (_, _)>(len)(input)?;
+    let (input, num) = take_bits::<_, i32, _, _>(len)(input)?;
     let mask = !0i32 << len;
     Ok((
         input,

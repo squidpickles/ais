@@ -77,29 +77,26 @@ impl AssignedMode {
 
 fn parse_base(data: &[u8]) -> IResult<&[u8], StandardClassBPositionReport> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, _regional_reserved) = take_bits::<_, u8, _, (_, _)>(8u8)(data)?;
-        let (data, speed_over_ground) =
-            map(take_bits::<_, _, _, (_, _)>(10u16), parse_speed_over_ground)(data)?;
-        let (data, position_accuracy) =
-            map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
+        let (data, _regional_reserved) = take_bits::<_, u8, _, _>(8u8)(data)?;
+        let (data, speed_over_ground) = map(take_bits(10u16), parse_speed_over_ground)(data)?;
+        let (data, position_accuracy) = map(take_bits(1u8), Accuracy::parse)(data)?;
         let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
         let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
-        let (data, course_over_ground) = map(take_bits::<_, _, _, (_, _)>(12u16), parse_cog)(data)?;
-        let (data, true_heading) = map(take_bits::<_, _, _, (_, _)>(9u16), parse_heading)(data)?;
-        let (data, timestamp) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, _regional_reserved) = take_bits::<_, u8, _, (_, _)>(2u8)(data)?;
-        let (data, cs_unit) = map(take_bits::<_, _, _, (_, _)>(1u8), CarrierSense::parse)(data)?;
-        let (data, has_display) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, has_dsc) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, whole_band) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, accepts_message_22) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, assigned_mode) =
-            map(take_bits::<_, _, _, (_, _)>(1u8), AssignedMode::parse)(data)?;
-        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, cs_selector) = take_bits::<_, _, _, (_, _)>(1u8)(data)?;
+        let (data, course_over_ground) = map(take_bits(12u16), parse_cog)(data)?;
+        let (data, true_heading) = map(take_bits(9u16), parse_heading)(data)?;
+        let (data, timestamp) = take_bits(6u8)(data)?;
+        let (data, _regional_reserved) = take_bits::<_, u8, _, _>(2u8)(data)?;
+        let (data, cs_unit) = map(take_bits(1u8), CarrierSense::parse)(data)?;
+        let (data, has_display) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, has_dsc) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, whole_band) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, accepts_message_22) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, assigned_mode) = map(take_bits(1u8), AssignedMode::parse)(data)?;
+        let (data, raim) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, cs_selector) = take_bits(1u8)(data)?;
         let (data, radio_status) = match cs_selector {
             0 => SotdmaMessage::parse(data)?,
             1 => ItdmaMessage::parse(data)?,

@@ -41,21 +41,21 @@ impl<'a> AisMessageType<'a> for BaseStationReport {
 
 fn parse_base(data: &[u8]) -> IResult<&[u8], BaseStationReport> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
         let (data, year) = parse_year(data)?;
         let (data, month) = parse_month(data)?;
         let (data, day) = parse_day(data)?;
         let (data, hour) = parse_hour(data)?;
         let (data, minute) = parse_minsec(data)?;
         let (data, second) = parse_minsec(data)?;
-        let (data, fix_quality) = map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, fix_quality) = map(take_bits(1u8), Accuracy::parse)(data)?;
         let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
         let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
-        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
-        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(10u8)(data)?;
-        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
+        let (data, epfd_type) = map(take_bits(4u8), EpfdType::parse)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, _>(10u8)(data)?;
+        let (data, raim) = map(take_bits(1u8), u8_to_bool)(data)?;
         let (data, radio_status) = parse_radio(data, message_type)?;
         Ok((
             data,

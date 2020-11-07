@@ -15,10 +15,10 @@ pub struct SlotReservation {
 
 impl SlotReservation {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
-        let (data, offset) = take_bits::<_, _, _, (_, _)>(12u16)(data)?;
-        let (data, num_slots) = take_bits::<_, _, _, (_, _)>(4u8)(data)?;
-        let (data, timeout) = take_bits::<_, _, _, (_, _)>(3u8)(data)?;
-        let (data, increment) = take_bits::<_, _, _, (_, _)>(11u16)(data)?;
+        let (data, offset) = take_bits(12u16)(data)?;
+        let (data, num_slots) = take_bits(4u8)(data)?;
+        let (data, timeout) = take_bits(3u8)(data)?;
+        let (data, increment) = take_bits(11u16)(data)?;
         Ok((
             data,
             Self {
@@ -52,10 +52,10 @@ impl<'a> AisMessageType<'a> for DataLinkManagementMessage {
 
 fn parse_base(data: &[u8]) -> IResult<&[u8], DataLinkManagementMessage> {
     bits(move |data: (&[u8], usize)| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(2u8)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
         let (data, reservations) = many_m_n(1, 4, SlotReservation::parse)(data)?;
         Ok((
             data,

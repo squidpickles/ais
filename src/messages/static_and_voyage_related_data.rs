@@ -44,24 +44,24 @@ impl<'a> AisMessageType<'a> for StaticAndVoyageRelatedData {
 
 fn parse_message(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, ais_version) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, imo_number) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
+        let (data, ais_version) = take_bits(2u8)(data)?;
+        let (data, imo_number) = take_bits(30u32)(data)?;
         let (data, callsign) = parse_6bit_ascii(data, 42)?;
         let (data, vessel_name) = parse_6bit_ascii(data, 120)?;
-        let (data, ship_type) = map(take_bits::<_, _, _, (_, _)>(8u8), ShipType::parse)(data)?;
-        let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-        let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-        let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
+        let (data, ship_type) = map(take_bits(8u8), ShipType::parse)(data)?;
+        let (data, dimension_to_bow) = take_bits(9u16)(data)?;
+        let (data, dimension_to_stern) = take_bits(9u16)(data)?;
+        let (data, dimension_to_port) = take_bits(6u16)(data)?;
+        let (data, dimension_to_starboard) = take_bits(6u16)(data)?;
+        let (data, epfd_type) = map(take_bits(4u8), EpfdType::parse)(data)?;
         let (data, eta_month_utc) = parse_month(data)?;
         let (data, eta_day_utc) = parse_day(data)?;
         let (data, eta_hour_utc) = parse_hour(data)?;
         let (data, eta_minute_utc) = parse_minsec(data)?;
-        let (data, draught) = map(take_bits::<_, u8, _, (_, _)>(8u8), |raw_draught| {
+        let (data, draught) = map(take_bits::<_, u8, _, _>(8u8), |raw_draught| {
             raw_draught as f32 / 10.0
         })(data)?;
         // Sometimes these messages are truncated.
@@ -69,13 +69,13 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
         let (data, destination) = parse_6bit_ascii(data, std::cmp::min(120, remaining_bits(data)))?;
         // Second, if there are no bits left for DTE, use the default value
         let (data, dte) = if remaining_bits(data) > 0 {
-            map(take_bits::<_, u8, _, (_, _)>(1u8), Into::into)(data)?
+            map(take_bits::<_, u8, _, _>(1u8), Into::into)(data)?
         } else {
             (data, Dte::default())
         };
         // Finally, take a last bit if there's still room, so the returned data doesn't have leftovers
         let (data, _) = if remaining_bits(data) > 0 {
-            take_bits::<_, u8, _, (_, _)>(1u8)(data)?
+            take_bits(1u8)(data)?
         } else {
             (data, 0u8)
         };

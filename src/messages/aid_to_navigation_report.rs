@@ -120,26 +120,26 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
 
 fn parse_message(data: &[u8]) -> IResult<&[u8], AidToNavigationReport> {
     bits(move |data| -> IResult<_, _> {
-        let (data, message_type) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, repeat_indicator) = take_bits::<_, _, _, (_, _)>(2u8)(data)?;
-        let (data, mmsi) = take_bits::<_, _, _, (_, _)>(30u32)(data)?;
-        let (data, aid_type) = map(take_bits::<_, _, _, (_, _)>(5u8), NavaidType::parse)(data)?;
+        let (data, message_type) = take_bits(6u8)(data)?;
+        let (data, repeat_indicator) = take_bits(2u8)(data)?;
+        let (data, mmsi) = take_bits(30u32)(data)?;
+        let (data, aid_type) = map(take_bits(5u8), NavaidType::parse)(data)?;
         let (data, name) = parse_6bit_ascii(data, 120)?;
-        let (data, accuracy) = map(take_bits::<_, _, _, (_, _)>(1u8), Accuracy::parse)(data)?;
+        let (data, accuracy) = map(take_bits(1u8), Accuracy::parse)(data)?;
         let (data, longitude) = map(|data| signed_i32(data, 28), parse_longitude)(data)?;
         let (data, latitude) = map(|data| signed_i32(data, 27), parse_latitude)(data)?;
-        let (data, dimension_to_bow) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-        let (data, dimension_to_stern) = take_bits::<_, _, _, (_, _)>(9u16)(data)?;
-        let (data, dimension_to_port) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, dimension_to_starboard) = take_bits::<_, _, _, (_, _)>(6u16)(data)?;
-        let (data, epfd_type) = map(take_bits::<_, _, _, (_, _)>(4u8), EpfdType::parse)(data)?;
-        let (data, utc_second) = take_bits::<_, _, _, (_, _)>(6u8)(data)?;
-        let (data, off_position) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, regional_reserved) = take_bits::<_, _, _, (_, _)>(8u8)(data)?;
-        let (data, raim) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, virtual_aid) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, assigned_mode) = map(take_bits::<_, _, _, (_, _)>(1u8), u8_to_bool)(data)?;
-        let (data, _spare) = take_bits::<_, u8, _, (_, _)>(1u8)(data)?;
+        let (data, dimension_to_bow) = take_bits(9u16)(data)?;
+        let (data, dimension_to_stern) = take_bits(9u16)(data)?;
+        let (data, dimension_to_port) = take_bits(6u16)(data)?;
+        let (data, dimension_to_starboard) = take_bits(6u16)(data)?;
+        let (data, epfd_type) = map(take_bits(4u8), EpfdType::parse)(data)?;
+        let (data, utc_second) = take_bits(6u8)(data)?;
+        let (data, off_position) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, regional_reserved) = take_bits(8u8)(data)?;
+        let (data, raim) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, virtual_aid) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, assigned_mode) = map(take_bits(1u8), u8_to_bool)(data)?;
+        let (data, _spare) = take_bits::<_, u8, _, _>(1u8)(data)?;
         Ok((
             data,
             AidToNavigationReport {

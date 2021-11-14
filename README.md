@@ -60,8 +60,12 @@ Right now, only a few common types are supported. They are:
 - Static and Voyage Related Data (type 5)
 - Binary Broadcast Message (type 8)
 - Interrogation (type 15)
+- DGNSS Broadcast Binary Message (type 17)
+- Static Class B Position Report (type 18)
+- Extended Class B Position Report (type 19)
 - Data Link Management Message (type 20)
 - Aid to Navigation Report (type 21)
 - Static Data Report (type 24)
+- 
 
 Others to come soon, I hope!

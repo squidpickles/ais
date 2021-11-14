@@ -1,6 +1,6 @@
 [package]
 name = "ais"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Kevin Rauwolf <sweetpea-git@tentacle.net>"]
 description = "An AIS parser library"
 homepage = "https://github.com/squidpickles/ais"
@@ -10,11 +10,11 @@ readme = "README.md"
 keywords = ["ais", "nmea"]
 categories = ["parser-implementations"]
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 thiserror = "1"
-nom = "6.1"
+nom = "7"
 
 [badges]
 travis-ci = { repository = "squidpickles/ais", branch = "master" }

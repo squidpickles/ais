@@ -2,6 +2,7 @@
 use super::navigation::*;
 use super::parsers::*;
 use super::radio_status::{ItdmaMessage, RadioStatus, SotdmaMessage};
+use super::types::AssignedMode;
 use super::AisMessageType;
 use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
@@ -54,22 +55,6 @@ impl CarrierSense {
         match val {
             0 => Self::Sotdma,
             1 => Self::CarrierSense,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum AssignedMode {
-    Autonomous,
-    Assigned,
-}
-
-impl AssignedMode {
-    pub fn parse(val: u8) -> Self {
-        match val {
-            0 => Self::Autonomous,
-            1 => Self::Assigned,
             _ => unreachable!(),
         }
     }

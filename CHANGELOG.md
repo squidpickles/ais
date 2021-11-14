@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2021-11-13
+### Added
+- Support for message type 19 (Extended Class B Position Report)
+### Changed
+- Edition 2021
+- Updated Nom dependency to v7
+- `AssignedMode` moved into `messages.types`
+
 ## [0.7.0] - 2021-03-11
 ### Added
 - Support for message type 17 (DGNSS Broadcast Binary Message).

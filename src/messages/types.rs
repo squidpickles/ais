@@ -189,3 +189,19 @@ impl From<u8> for Dte {
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum AssignedMode {
+    Autonomous,
+    Assigned,
+}
+
+impl AssignedMode {
+    pub fn parse(val: u8) -> Self {
+        match val {
+            0 => Self::Autonomous,
+            1 => Self::Assigned,
+            _ => unreachable!(),
+        }
+    }
+}

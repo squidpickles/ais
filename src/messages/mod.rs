@@ -34,6 +34,7 @@ pub enum AisMessage {
     DataLinkManagementMessage(data_link_management_message::DataLinkManagementMessage),
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
     StaticDataReport(static_data_report::StaticDataReport),
+    UtcDateResponse(utc_date_response::UtcDateResponse),
 }
 
 /// Trait that describes specific types of AIS messages
@@ -62,6 +63,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
             binary_broadcast_message::BinaryBroadcastMessage::parse(&unarmored)?,
+        )),
+        11 => Ok(AisMessage::UtcDateResponse(
+            utc_date_response::UtcDateResponse::parse(&unarmored)?,
         )),
         15 => Ok(AisMessage::Interrogation(
             interrogation::Interrogation::parse(&unarmored)?,

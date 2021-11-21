@@ -59,6 +59,7 @@ Right now, only a few common types are supported. They are:
 - Base Station Report (type 4)
 - Static and Voyage Related Data (type 5)
 - Binary Broadcast Message (type 8)
+- UTC/Date Response (type 11)
 - Interrogation (type 15)
 - DGNSS Broadcast Binary Message (type 17)
 - Static Class B Position Report (type 18)

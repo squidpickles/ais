@@ -79,7 +79,7 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], PositionReport> {
     })(data)
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum NavigationStatus {
     UnderWayUsingEngine,
     AtAnchor,
@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(position.true_heading, Some(41));
         assert_eq!(position.timestamp, 53);
         assert_eq!(position.maneuver_indicator, None);
-        assert_eq!(position.raim, false);
+        assert!(!position.raim);
         if let RadioStatus::Sotdma(radio_status) = position.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 1);
@@ -203,7 +203,7 @@ mod tests {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_increment, 0);
             assert_eq!(radio_status.num_slots, 0);
-            assert_eq!(radio_status.keep, false);
+            assert!(!radio_status.keep);
         } else {
             panic!("Expected ITDMA message");
         }

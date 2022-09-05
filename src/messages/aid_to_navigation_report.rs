@@ -8,7 +8,7 @@ use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum NavaidType {
     ReferencePoint,
     Racon,
@@ -186,6 +186,6 @@ mod tests {
         f32_equal_naive(message.longitude.unwrap(), -123.35972);
         f32_equal_naive(message.latitude.unwrap(), 38.124718);
         assert_eq!(message.epfd_type, Some(EpfdType::Surveyed));
-        assert_eq!(message.raim, false);
+        assert!(!message.raim);
     }
 }

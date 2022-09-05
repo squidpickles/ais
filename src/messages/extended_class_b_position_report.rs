@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(report.repeat_indicator, 0);
         assert_eq!(report.mmsi, 413954782);
         assert_eq!(report.speed_over_ground, Some(0.0));
-        assert_eq!(report.position_accuracy, Accuracy::DGPS);
+        assert_eq!(report.position_accuracy, Accuracy::Dgps);
         f32_equal_naive(report.longitude.unwrap(), 120.12851);
         f32_equal_naive(report.latitude.unwrap(), 31.931623);
         assert_eq!(report.course_over_ground, Some(40.7));
@@ -127,7 +127,7 @@ mod tests {
         assert_eq!(report.dimension_to_port, 4);
         assert_eq!(report.dimension_to_starboard, 4);
         assert_eq!(report.epfd_type, None);
-        assert_eq!(report.raim, false);
+        assert!(!report.raim);
         assert_eq!(report.dte, Dte::NotReady);
         assert_eq!(report.assigned_mode, AssignedMode::Autonomous);
     }

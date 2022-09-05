@@ -5,7 +5,7 @@ use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Message {
     pub message_type: u8,
     pub slot_offset: Option<u16>,
@@ -34,7 +34,7 @@ impl Message {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Station {
     pub mmsi: u32,
     pub messages: Vec<Message>,
@@ -60,7 +60,7 @@ impl Station {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Interrogation {
     pub message_type: u8,
     pub repeat_indicator: u8,

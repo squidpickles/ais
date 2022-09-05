@@ -4,13 +4,13 @@ use nom::combinator::map;
 use nom::error::ErrorKind;
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RadioStatus {
     Sotdma(SotdmaMessage),
     Itdma(ItdmaMessage),
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SyncState {
     UtcDirect,
     UtcIndirect,
@@ -32,7 +32,7 @@ impl SyncState {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SubMessage {
     SlotOffset(i16),
     UtcHourAndMinute(u8, u8),
@@ -75,7 +75,7 @@ impl SubMessage {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SotdmaMessage {
     pub sync_state: SyncState,
     pub slot_timeout: u8,
@@ -98,7 +98,7 @@ impl SotdmaMessage {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ItdmaMessage {
     pub sync_state: SyncState,
     pub slot_increment: i16,

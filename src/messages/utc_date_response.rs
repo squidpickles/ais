@@ -106,7 +106,7 @@ mod tests {
         f32_equal_naive(message.longitude.unwrap(), 108.32119);
         f32_equal_naive(message.latitude.unwrap(), 21.591275);
         assert_eq!(message.epfd_type, Some(EpfdType::Gps));
-        assert_eq!(message.raim, false);
+        assert!(!message.raim);
         if let RadioStatus::Sotdma(radio_status) = message.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 0);

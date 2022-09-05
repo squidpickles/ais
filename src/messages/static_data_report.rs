@@ -7,7 +7,7 @@ use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct StaticDataReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -26,7 +26,7 @@ impl<'a> AisMessageType<'a> for StaticDataReport {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 /// Static Data Report messages have two different sub-message types.
 /// The idea is that both get broadcast periodically.
 pub enum MessagePart {

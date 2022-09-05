@@ -4,7 +4,7 @@ use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BinaryBroadcastMessage {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -27,7 +27,7 @@ impl<'a> AisMessageType<'a> for BinaryBroadcastMessage {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CarrierSense {
     /// Class B SOTDMA unit
     Sotdma,
@@ -45,7 +45,7 @@ impl CarrierSense {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AssignedMode {
     Autonomous,
     Assigned,

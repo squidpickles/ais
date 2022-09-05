@@ -5,7 +5,7 @@ use nom::bits::{bits, complete::take as take_bits};
 use nom::multi::many_m_n;
 use nom::IResult;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SlotReservation {
     pub offset: u16,
     pub num_slots: u8,
@@ -31,7 +31,7 @@ impl SlotReservation {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DataLinkManagementMessage {
     pub message_type: u8,
     pub repeat_indicator: u8,

@@ -12,7 +12,7 @@ use nom::number::complete::hex_u32;
 use nom::sequence::terminated;
 use nom::IResult;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 /// Represents the NMEA sentence type of an AIS message
 pub enum AisReportType {
     /// Report from another ship
@@ -34,7 +34,7 @@ impl<'a> From<&'a [u8]> for AisReportType {
 }
 
 /// Talker ID for the AIS station
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum TalkerId {
     /// NMEA 4.0 Base AIS station
     AB,
@@ -83,39 +83,29 @@ pub enum AisFragments<'a> {
     Incomplete(AisSentence<'a>),
 }
 
-impl<'a> Into<Option<AisSentence<'a>>> for AisFragments<'a> {
-    fn into(self) -> Option<AisSentence<'a>> {
-        match self {
-            Self::Complete(sentence) => Some(sentence),
-            Self::Incomplete(_) => None,
+impl<'a> From<AisFragments<'a>> for Option<AisSentence<'a>> {
+    fn from(frag: AisFragments<'a>) -> Self {
+        match frag {
+            AisFragments::Complete(sentence) => Some(sentence),
+            AisFragments::Incomplete(_) => None,
         }
     }
 }
 
-impl<'a> Into<Result<AisSentence<'a>>> for AisFragments<'a> {
-    fn into(self) -> Result<AisSentence<'a>> {
-        match self {
-            Self::Complete(sentence) => Ok(sentence),
-            Self::Incomplete(_) => Err("Incomplete message".into()),
+impl<'a> From<AisFragments<'a>> for Result<AisSentence<'a>> {
+    fn from(frag: AisFragments<'a>) -> Self {
+        match frag {
+            AisFragments::Complete(sentence) => Ok(sentence),
+            AisFragments::Incomplete(_) => Err("Incomplete message".into()),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AisParser {
     message_id: Option<u8>,
     fragment_number: u8,
     data: Vec<u8>,
-}
-
-impl Default for AisParser {
-    fn default() -> Self {
-        AisParser {
-            message_id: None,
-            fragment_number: 0,
-            data: Vec::new(),
-        }
-    }
 }
 
 impl AisParser {

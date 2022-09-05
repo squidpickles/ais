@@ -3,7 +3,7 @@
 /// Electronic Position Fixing Device type. This is the
 /// type of device used for determining the object's
 /// position.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum EpfdType {
     Gps,
     Glonass,
@@ -34,7 +34,7 @@ impl EpfdType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ShipType {
     Reserved,
     WingInGround,
@@ -168,7 +168,7 @@ impl ShipType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Dte {
     Ready,
     NotReady,
@@ -190,7 +190,7 @@ impl From<u8> for Dte {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AssignedMode {
     Autonomous,
     Assigned,

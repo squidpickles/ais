@@ -102,11 +102,11 @@ mod tests {
         assert_eq!(message.hour, 17);
         assert_eq!(message.minute, Some(15));
         assert_eq!(message.second, Some(11));
-        assert_eq!(message.fix_quality, Accuracy::DGPS);
+        assert_eq!(message.fix_quality, Accuracy::Dgps);
         f32_equal_naive(message.longitude.unwrap(), -122.464775);
         f32_equal_naive(message.latitude.unwrap(), 37.794308);
         assert_eq!(message.epfd_type, None);
-        assert_eq!(message.raim, true);
+        assert!(message.raim);
         if let RadioStatus::Sotdma(radio_status) = message.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 0);
@@ -130,11 +130,11 @@ mod tests {
         assert_eq!(message.hour, 19);
         assert_eq!(message.minute, Some(57));
         assert_eq!(message.second, Some(39));
-        assert_eq!(message.fix_quality, Accuracy::DGPS);
+        assert_eq!(message.fix_quality, Accuracy::Dgps);
         assert_eq!(message.longitude, Some(-76.35236));
         assert_eq!(message.latitude, Some(36.883766));
         assert_eq!(message.epfd_type, Some(EpfdType::Surveyed));
-        assert_eq!(message.raim, false);
+        assert!(!message.raim);
         if let RadioStatus::Sotdma(radio_status) = message.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
             assert_eq!(radio_status.slot_timeout, 4);

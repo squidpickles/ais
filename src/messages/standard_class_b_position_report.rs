@@ -42,7 +42,7 @@ impl<'a> AisMessageType<'a> for StandardClassBPositionReport {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CarrierSense {
     /// Class B SOTDMA unit
     Sotdma,
@@ -136,16 +136,16 @@ mod tests {
         assert_eq!(report.true_heading, Some(480));
         assert_eq!(report.timestamp, 13);
         assert_eq!(report.cs_unit, CarrierSense::CarrierSense);
-        assert_eq!(report.has_display, false);
-        assert_eq!(report.has_dsc, false);
-        assert_eq!(report.whole_band, true);
+        assert!(!report.has_display);
+        assert!(!report.has_dsc);
+        assert!(report.whole_band);
         assert_eq!(report.assigned_mode, AssignedMode::Autonomous);
-        assert_eq!(report.raim, false);
+        assert!(!report.raim);
         if let RadioStatus::Itdma(radio_status) = report.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::NumberOfReceivedStations);
             assert_eq!(radio_status.slot_increment, 0);
             assert_eq!(radio_status.num_slots, 0);
-            assert_eq!(radio_status.keep, false);
+            assert!(!radio_status.keep);
         } else {
             panic!("Expected SOTDMA message");
         }

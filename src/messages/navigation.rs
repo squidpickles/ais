@@ -33,28 +33,28 @@ pub fn parse_heading(data: u16) -> Option<u16> {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Accuracy {
     Unaugmented,
-    DGPS,
+    Dgps,
 }
 
 impl Accuracy {
     pub fn parse(data: u8) -> Self {
         match data {
             0 => Self::Unaugmented,
-            1 => Self::DGPS,
+            1 => Self::Dgps,
             _ => unreachable!(),
         }
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct RateOfTurn {
     raw: i8,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Direction {
     Port,
     Starboard,
@@ -88,7 +88,7 @@ impl RateOfTurn {
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ManeuverIndicator {
     NoSpecialManeuver,
     SpecialManeuver,

@@ -53,40 +53,40 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
     let (_, result) = message_type(unarmored)?;
     match result {
         1..=3 => Ok(AisMessage::PositionReport(
-            position_report::PositionReport::parse(&unarmored)?,
+            position_report::PositionReport::parse(unarmored)?,
         )),
         4 => Ok(AisMessage::BaseStationReport(
-            base_station_report::BaseStationReport::parse(&unarmored)?,
+            base_station_report::BaseStationReport::parse(unarmored)?,
         )),
         5 => Ok(AisMessage::StaticAndVoyageRelatedData(
-            static_and_voyage_related_data::StaticAndVoyageRelatedData::parse(&unarmored)?,
+            static_and_voyage_related_data::StaticAndVoyageRelatedData::parse(unarmored)?,
         )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
-            binary_broadcast_message::BinaryBroadcastMessage::parse(&unarmored)?,
+            binary_broadcast_message::BinaryBroadcastMessage::parse(unarmored)?,
         )),
         11 => Ok(AisMessage::UtcDateResponse(
-            utc_date_response::UtcDateResponse::parse(&unarmored)?,
+            utc_date_response::UtcDateResponse::parse(unarmored)?,
         )),
         15 => Ok(AisMessage::Interrogation(
-            interrogation::Interrogation::parse(&unarmored)?,
+            interrogation::Interrogation::parse(unarmored)?,
         )),
         17 => Ok(AisMessage::DgnssBroadcastBinaryMessage(
-            dgnss_broadcast_binary_message::DgnssBroadcastBinaryMessage::parse(&unarmored)?,
+            dgnss_broadcast_binary_message::DgnssBroadcastBinaryMessage::parse(unarmored)?,
         )),
         18 => Ok(AisMessage::StandardClassBPositionReport(
-            standard_class_b_position_report::StandardClassBPositionReport::parse(&unarmored)?,
+            standard_class_b_position_report::StandardClassBPositionReport::parse(unarmored)?,
         )),
         19 => Ok(AisMessage::ExtendedClassBPositionReport(
-            extended_class_b_position_report::ExtendedClassBPositionReport::parse(&unarmored)?,
+            extended_class_b_position_report::ExtendedClassBPositionReport::parse(unarmored)?,
         )),
         20 => Ok(AisMessage::DataLinkManagementMessage(
-            data_link_management_message::DataLinkManagementMessage::parse(&unarmored)?,
+            data_link_management_message::DataLinkManagementMessage::parse(unarmored)?,
         )),
         21 => Ok(AisMessage::AidToNavigationReport(
-            aid_to_navigation_report::AidToNavigationReport::parse(&unarmored)?,
+            aid_to_navigation_report::AidToNavigationReport::parse(unarmored)?,
         )),
         24 => Ok(AisMessage::StaticDataReport(
-            static_data_report::StaticDataReport::parse(&unarmored)?,
+            static_data_report::StaticDataReport::parse(unarmored)?,
         )),
         _ => Err(format!("Unimplemented type: {}", result).into()),
     }

@@ -16,7 +16,7 @@ pub struct DgnssBroadcastBinaryMessage {
     pub payload: DifferentialCorrectionData,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DifferentialCorrectionData {
     pub message_type: u8,
     pub station_id: u16,

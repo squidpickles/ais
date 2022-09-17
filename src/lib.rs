@@ -30,18 +30,62 @@
 //! }
 //! # Ok::<(), ais::errors::Error>(())
 //! ```
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[doc(hidden)]
+/// standard library stuff available crate-wide, regardless of `no_std` state
+pub mod lib {
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    pub mod std {
+        pub use core::{borrow, cmp, fmt, mem, result, str};
+
+        pub mod vec {
+            pub use heapless::Vec;
+        }
+
+        pub mod string {
+            pub use heapless::String;
+        }
+
+        pub trait Error: fmt::Debug + fmt::Display {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
+                None
+            }
+        }
+    }
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub mod std {
+        extern crate alloc;
+        pub use alloc::{borrow, fmt, format, str, string, vec};
+        pub use core::{cmp, mem, result};
+
+        pub trait Error: fmt::Debug + fmt::Display {
+            fn source(&self) -> Option<&(dyn Error + 'static)> {
+                None
+            }
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub mod std {
+        #[doc(hidden)]
+        pub use std::{borrow, cmp, error, fmt, format, io, mem, result, str, string, vec};
+    }
+}
+
 pub mod errors;
 pub mod messages;
 pub mod sentence;
 
 pub use errors::Result;
 pub use sentence::{AisFragments, AisParser};
+
 #[cfg(test)]
 mod test_helpers {
     #[inline]
     /// Compares two `f32`s, assuming they are both numeric, and panics if they differ
     pub fn f32_equal_naive(a: f32, b: f32) {
-        if (a - b).abs() >= std::f32::EPSILON {
+        if (a - b).abs() >= f32::EPSILON {
             panic!("float {} != {}", a, b);
         }
     }

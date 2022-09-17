@@ -1,5 +1,6 @@
 //! Base Station Report (type 4)
-use std::time::Duration;
+use crate::lib;
+use lib::std::time::Duration;
 
 use super::navigation::*;
 use super::parsers::*;
@@ -161,7 +162,7 @@ mod tests {
     fn test_type23() {
         let bytestream = b"G02OHAP8aLvg@@b1tF600000;00";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = GroupAssignmentCommand::parse(&bitstream).unwrap();
+        let message = GroupAssignmentCommand::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 23);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 2611270);

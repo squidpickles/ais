@@ -3,6 +3,7 @@ use super::parsers::*;
 use super::types::*;
 use super::AisMessageType;
 use crate::errors::Result;
+use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
@@ -14,8 +15,8 @@ pub struct StaticAndVoyageRelatedData {
     pub mmsi: u32,
     pub ais_version: u8,
     pub imo_number: u32,
-    pub callsign: String,
-    pub vessel_name: String,
+    pub callsign: AsciiString,
+    pub vessel_name: AsciiString,
     pub ship_type: Option<ShipType>,
     pub dimension_to_bow: u16,
     pub dimension_to_stern: u16,
@@ -27,7 +28,7 @@ pub struct StaticAndVoyageRelatedData {
     pub eta_hour_utc: u8,
     pub eta_minute_utc: Option<u8>,
     pub draught: f32,
-    pub destination: String,
+    pub destination: AsciiString,
     pub dte: Dte,
 }
 
@@ -36,7 +37,7 @@ impl<'a> AisMessageType<'a> for StaticAndVoyageRelatedData {
         "Static and Voyage Related Data"
     }
 
-    fn parse(data: &[u8]) -> Result<Self> {
+    fn parse(data: &'a [u8]) -> Result<Self> {
         let (_, report) = parse_message(data)?;
         Ok(report)
     }
@@ -66,7 +67,8 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], StaticAndVoyageRelatedData> {
         })(data)?;
         // Sometimes these messages are truncated.
         // First, take only up to 120 bits for destination
-        let (data, destination) = parse_6bit_ascii(data, std::cmp::min(120, remaining_bits(data)))?;
+        let (data, destination) =
+            parse_6bit_ascii(data, lib::std::cmp::min(120, remaining_bits(data)))?;
         // Second, if there are no bits left for DTE, use the default value
         let (data, dte) = if remaining_bits(data) > 0 {
             map(take_bits::<_, u8, _, _>(1u8), Into::into)(data)?
@@ -117,7 +119,7 @@ mod tests {
     fn test_type5_truncated() {
         let bytestream = b"5341U9`00000uCGCKL0u=@T4000000000000001?<@<47u;b004Sm51DQ0C@";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
+        let message = StaticAndVoyageRelatedData::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 5);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 205546790);
@@ -141,7 +143,7 @@ mod tests {
         */
         let bytestream = b"53`soB8000010KSOW<0P4eDp4l6000000000000U0p<24t@P05H3S833CDP000000000000";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = StaticAndVoyageRelatedData::parse(&bitstream).unwrap();
+        let message = StaticAndVoyageRelatedData::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 5);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 244250440);

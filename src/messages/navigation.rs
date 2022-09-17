@@ -71,7 +71,7 @@ impl RateOfTurn {
 
     pub fn rate(self) -> Option<f32> {
         match self.raw {
-            -126..=126 => Some((self.raw as f32 / 4.733).powi(2)),
+            -126..=126 => Some((self.raw as f32 / 4.733) * (self.raw as f32 / 4.733)),
             -127 => None,
             127 => None,
             _ => unreachable!(),

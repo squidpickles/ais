@@ -1,7 +1,9 @@
 //! Interrogation (type 15)
 use super::parsers::*;
+use super::push_unwrap;
 use super::AisMessageType;
 use crate::errors::Result;
+use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::IResult;
 
@@ -34,38 +36,49 @@ impl Message {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type MessageList = lib::std::vec::Vec<Message>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type MessageList = lib::std::vec::Vec<Message, 3>;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Station {
     pub mmsi: u32,
-    pub messages: Vec<Message>,
+    pub messages: MessageList,
 }
 
 impl Station {
     pub fn parse(data: (&[u8], usize)) -> IResult<(&[u8], usize), Self> {
         let (data, mmsi) = take_bits(30u32)(data)?;
-        let mut messages = Vec::new();
+        let mut messages: MessageList = Default::default();
         let (data, message) = Message::parse(data)?;
-        messages.push(message);
+        push_unwrap(&mut messages, message);
         let data = if remaining_bits(data) >= 8 {
             let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
             let (data, message) = Message::parse(data)?;
             if message.message_type != 0 || message.slot_offset.is_some() {
-                messages.push(message);
+                push_unwrap(&mut messages, message);
             }
             data
         } else {
             data
         };
+        // TODO: this is only dealing with 2 messages out of 3?
         Ok((data, Self { mmsi, messages }))
     }
 }
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type StationList = lib::std::vec::Vec<Station>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type StationList = lib::std::vec::Vec<Station, 2>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Interrogation {
     pub message_type: u8,
     pub repeat_indicator: u8,
     pub mmsi: u32,
-    pub stations: Vec<Station>,
+    pub stations: StationList,
 }
 
 impl<'a> AisMessageType<'a> for Interrogation {
@@ -85,13 +98,13 @@ fn parse_message(data: &[u8]) -> IResult<&[u8], Interrogation> {
         let (data, repeat_indicator) = take_bits(2u8)(data)?;
         let (data, mmsi) = take_bits(30u32)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
-        let mut stations = Vec::new();
+        let mut stations: StationList = Default::default();
         let (data, station) = Station::parse(data)?;
-        stations.push(station);
+        push_unwrap(&mut stations, station);
         let remaining = remaining_bits(data);
         let data = if remaining >= 30 {
             let (data, station) = Station::parse(data)?;
-            stations.push(station);
+            push_unwrap(&mut stations, station);
             take_bits::<_, u8, _, _>(2u8)(data)?.0
         } else {
             (<&[u8]>::default(), 0)
@@ -118,7 +131,7 @@ mod tests {
     fn test_type15_short() {
         let bytestream = b"?03Owo@nwsI0D00";
         let bitstream = crate::messages::unarmor(bytestream, 2).unwrap();
-        let message = Interrogation::parse(&bitstream).unwrap();
+        let message = Interrogation::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 15);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 3669981);
@@ -135,7 +148,7 @@ mod tests {
     fn test_type15_busy() {
         let bytestream = b"?>eq`dAh3`TQP00";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = Interrogation::parse(&bitstream).unwrap();
+        let message = Interrogation::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 15);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 987654321);
@@ -152,7 +165,7 @@ mod tests {
     fn test_type15_longer() {
         let bytestream = b"?04759iVhc2lD003000";
         let bitstream = crate::messages::unarmor(bytestream, 2).unwrap();
-        let message = Interrogation::parse(&bitstream).unwrap();
+        let message = Interrogation::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 15);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 4310311);

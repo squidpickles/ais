@@ -92,7 +92,7 @@ mod tests {
     fn test_type4() {
         let bytestream = b"403OtVAv7=i?;o?IaHE`4Iw020S:";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = BaseStationReport::parse(&bitstream).unwrap();
+        let message = BaseStationReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 4);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 003669145);
@@ -120,7 +120,7 @@ mod tests {
     fn test_type4_2() {
         let bytestream = b"403OviQuMGCqWrRO9>E6fE700@GO";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = BaseStationReport::parse(&bitstream).unwrap();
+        let message = BaseStationReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 4);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 3669702);
@@ -148,7 +148,7 @@ mod tests {
     fn test_type4_invalid_date() {
         let bytestream = b"4h2E:qT47wk?0<tSF0l4Q@000d;@";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = BaseStationReport::parse(&bitstream).unwrap();
+        let message = BaseStationReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.mmsi, 002444006);
         assert_eq!(message.year, Some(4161));
         assert_eq!(message.month, Some(15));

@@ -1,6 +1,6 @@
 //! Handlers for AIS messages at the NMEA sentence layer
 
-use std::borrow::Cow;
+use crate::lib;
 
 use crate::errors::{Error, Result};
 use crate::messages::{self, AisMessage};
@@ -11,6 +11,13 @@ use nom::combinator::{map, map_res, opt, peek, verify};
 use nom::number::complete::hex_u32;
 use nom::sequence::terminated;
 use nom::IResult;
+
+pub const MAX_SENTENCE_SIZE_BYTES: usize = 384;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type AisRawData = lib::std::vec::Vec<u8>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type AisRawData = lib::std::vec::Vec<u8, MAX_SENTENCE_SIZE_BYTES>;
 
 #[derive(PartialEq, Eq, Debug)]
 /// Represents the NMEA sentence type of an AIS message
@@ -78,13 +85,13 @@ impl<'a> From<&'a [u8]> for TalkerId {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AisFragments<'a> {
-    Complete(AisSentence<'a>),
-    Incomplete(AisSentence<'a>),
+pub enum AisFragments {
+    Complete(AisSentence),
+    Incomplete(AisSentence),
 }
 
-impl<'a> From<AisFragments<'a>> for Option<AisSentence<'a>> {
-    fn from(frag: AisFragments<'a>) -> Self {
+impl From<AisFragments> for Option<AisSentence> {
+    fn from(frag: AisFragments) -> Self {
         match frag {
             AisFragments::Complete(sentence) => Some(sentence),
             AisFragments::Incomplete(_) => None,
@@ -92,8 +99,8 @@ impl<'a> From<AisFragments<'a>> for Option<AisSentence<'a>> {
     }
 }
 
-impl<'a> From<AisFragments<'a>> for Result<AisSentence<'a>> {
-    fn from(frag: AisFragments<'a>) -> Self {
+impl From<AisFragments> for Result<AisSentence> {
+    fn from(frag: AisFragments) -> Self {
         match frag {
             AisFragments::Complete(sentence) => Ok(sentence),
             AisFragments::Incomplete(_) => Err("Incomplete message".into()),
@@ -105,7 +112,7 @@ impl<'a> From<AisFragments<'a>> for Result<AisSentence<'a>> {
 pub struct AisParser {
     message_id: Option<u8>,
     fragment_number: u8,
-    data: Vec<u8>,
+    data: AisRawData,
 }
 
 impl AisParser {
@@ -117,26 +124,26 @@ impl AisParser {
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
     /// an `AisSentence`. Note that several `AisSentence`s might be required to
     /// complete a message, if they are fragments
-    /// If `message` is `true`, the internal AIS message will also be parsed
-    /// If it is false, then internal AIS messages will be ignored.
+    /// If `decode` is `true`, the internal AIS message will also be parsed
+    /// If it is `false`, then internal AIS messages will be ignored.
     /// In both cases, AIS data will be passed along raw.
-    pub fn parse<'a>(&mut self, line: &'a [u8], decode: bool) -> Result<AisFragments<'a>> {
+    pub fn parse(&mut self, line: &[u8], decode: bool) -> Result<AisFragments> {
         let (_, (data, mut ais_sentence, checksum)) = parse_nmea_sentence(line)?;
         Self::check_checksum(data, checksum)?;
         if ais_sentence.has_more() {
             if ais_sentence.fragment_number == 1 {
                 self.message_id = ais_sentence.message_id;
                 self.fragment_number = 0;
-                self.data = Vec::new();
+                self.data = AisRawData::default();
             }
             self.verify_and_extend_data(&ais_sentence)?;
             Ok(AisFragments::Incomplete(ais_sentence))
         } else {
             if ais_sentence.is_fragment() {
                 self.verify_and_extend_data(&ais_sentence)?;
-                let mut data = Vec::new();
-                std::mem::swap(&mut data, &mut self.data);
-                ais_sentence.data = data.into();
+                let mut data = AisRawData::default();
+                lib::std::mem::swap(&mut data, &mut self.data);
+                ais_sentence.data = data;
             }
             if decode {
                 let unarmored =
@@ -155,7 +162,12 @@ impl AisParser {
             return Err("Fragment numbers out of sequence".into());
         }
         self.fragment_number = ais_sentence.fragment_number;
+        #[cfg(any(feature = "std", feature = "alloc"))]
         self.data.extend_from_slice(&ais_sentence.data);
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        self.data
+            .extend_from_slice(&ais_sentence.data)
+            .map_err(|_| Error::from("Vec is full on extend_from_slice"))?;
         Ok(())
     }
 
@@ -175,20 +187,20 @@ impl AisParser {
 
 #[derive(Debug, PartialEq)]
 /// Represents an NMEA sentence parsed as AIS
-pub struct AisSentence<'a> {
+pub struct AisSentence {
     pub talker_id: TalkerId,
     pub report_type: AisReportType,
     pub num_fragments: u8,
     pub fragment_number: u8,
     pub message_id: Option<u8>,
     pub channel: Option<char>,
-    pub data: Cow<'a, [u8]>,
+    pub data: AisRawData,
     pub fill_bit_count: u8,
     pub message_type: u8,
     pub message: Option<AisMessage>,
 }
 
-impl<'a> AisSentence<'a> {
+impl AisSentence {
     /// Returns whether there are more fragments to come
     pub fn has_more(&self) -> bool {
         self.fragment_number < self.num_fragments
@@ -202,12 +214,12 @@ impl<'a> AisSentence<'a> {
 
 /// Converts bytes representing an ASCII number to a string slice
 fn parse_numeric_string(data: &[u8]) -> IResult<&[u8], &str> {
-    map_res(digit1, std::str::from_utf8)(data)
+    map_res(digit1, lib::std::str::from_utf8)(data)
 }
 
 /// Converts bytes representing an ASCII number to a u8
 fn parse_u8_digit(data: &[u8]) -> IResult<&[u8], u8> {
-    map_res(parse_numeric_string, std::str::FromStr::from_str)(data)
+    map_res(parse_numeric_string, lib::std::str::FromStr::from_str)(data)
 }
 
 /// Named parser for the AIS portion of an NMEA sentence
@@ -228,6 +240,15 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
     let (data, _) = tag(",")(data)?;
     let (data, fill_bit_count) = verify(parse_u8_digit, |val| *val < 6)(data)?;
     let (_, message_type) = messages::message_type(ais_data)?;
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    let ais_data_owned = ais_data.into();
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    let ais_data_owned = ais_data.try_into().map_err(|_| {
+        nom::Err::Failure(nom::error::Error::new(
+            ais_data,
+            nom::error::ErrorKind::TooLarge,
+        ))
+    })?;
     Ok((
         data,
         AisSentence {
@@ -237,7 +258,7 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
             fragment_number,
             message_id,
             channel,
-            data: ais_data.into(),
+            data: ais_data_owned,
             fill_bit_count,
             message_type,
             message: None,
@@ -284,7 +305,9 @@ mod tests {
                 fragment_number: 1,
                 message_id: None,
                 channel: Some('A'),
-                data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
+                    .try_into()
+                    .unwrap(),
                 fill_bit_count: 0,
                 message_type: 17,
                 message: None,
@@ -310,7 +333,12 @@ mod tests {
                 fragment_number: 1,
                 message_id: None,
                 channel: Some('A'),
-                data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX].into(),
+                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
+                    .try_into()
+                    .unwrap(),
                 fill_bit_count: 0,
                 message_type: 17,
                 message: None,
@@ -332,7 +360,12 @@ mod tests {
                 fragment_number: 1,
                 message_id: None,
                 channel: Some('A'),
-                data: Cow::Borrowed(&GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]),
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX].into(),
+                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
+                    .try_into()
+                    .unwrap(),
                 fill_bit_count: 0,
                 message_type: 17,
                 message: None,

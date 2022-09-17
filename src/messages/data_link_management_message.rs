@@ -1,7 +1,11 @@
 //! Data Link Management Message (type 20)
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+use super::nom_noalloc::many_m_n;
 use super::AisMessageType;
 use crate::errors::Result;
+use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
+#[cfg(any(feature = "std", feature = "alloc"))]
 use nom::multi::many_m_n;
 use nom::IResult;
 
@@ -31,12 +35,17 @@ impl SlotReservation {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type SlotReservationList = lib::std::vec::Vec<SlotReservation>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type SlotReservationList = lib::std::vec::Vec<SlotReservation, 4>;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DataLinkManagementMessage {
     pub message_type: u8,
     pub repeat_indicator: u8,
     pub mmsi: u32,
-    pub reservations: Vec<SlotReservation>,
+    pub reservations: SlotReservationList,
 }
 
 impl<'a> AisMessageType<'a> for DataLinkManagementMessage {
@@ -56,7 +65,10 @@ fn parse_base(data: &[u8]) -> IResult<&[u8], DataLinkManagementMessage> {
         let (data, repeat_indicator) = take_bits(2u8)(data)?;
         let (data, mmsi) = take_bits(30u32)(data)?;
         let (data, _spare) = take_bits::<_, u8, _, _>(2u8)(data)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let (data, reservations) = many_m_n(1, 4, SlotReservation::parse)(data)?;
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let (data, reservations) = many_m_n::<_, _, _, _, 4>(1, SlotReservation::parse)(data)?;
         Ok((
             data,
             DataLinkManagementMessage {
@@ -78,7 +90,7 @@ mod tests {
     fn test_2_slots() {
         let bytestream = b"D02<HjiUHBfr<`E6D0";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let report = DataLinkManagementMessage::parse(&bitstream).unwrap();
+        let report = DataLinkManagementMessage::parse(bitstream.as_ref()).unwrap();
         assert_eq!(report.message_type, 20);
         assert_eq!(report.repeat_indicator, 0);
         assert_eq!(report.mmsi, 2300107);
@@ -91,7 +103,7 @@ mod tests {
     fn test_3_slots() {
         let bytestream = b"D02;bK0RlLfq6DM6DA8u6D0";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let report = DataLinkManagementMessage::parse(&bitstream).unwrap();
+        let report = DataLinkManagementMessage::parse(bitstream.as_ref()).unwrap();
         assert_eq!(report.message_type, 20);
         assert_eq!(report.repeat_indicator, 0);
         assert_eq!(report.mmsi, 2288236);

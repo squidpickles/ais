@@ -1,5 +1,7 @@
 //! Specific AIS message types
 use crate::errors::Result;
+use crate::lib;
+use crate::sentence::AisRawData;
 
 pub mod aid_to_navigation_report;
 pub mod base_station_report;
@@ -9,6 +11,8 @@ pub mod dgnss_broadcast_binary_message;
 pub mod extended_class_b_position_report;
 pub mod interrogation;
 mod navigation;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+mod nom_noalloc;
 mod parsers;
 pub mod position_report;
 mod radio_status;
@@ -19,6 +23,9 @@ mod types;
 pub mod utc_date_response;
 
 pub use parsers::message_type;
+
+#[cfg(feature = "alloc")]
+use crate::lib::std::{format, vec, vec::Vec};
 
 /// Contains all structured messages recognized by this crate
 #[derive(Debug, PartialEq)]
@@ -88,7 +95,10 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         24 => Ok(AisMessage::StaticDataReport(
             static_data_report::StaticDataReport::parse(unarmored)?,
         )),
+        #[cfg(any(feature = "std", feature = "alloc"))]
         _ => Err(format!("Unimplemented type: {}", result).into()),
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        _ => Err("Unimplemented message type".into()),
     }
 }
 
@@ -106,16 +116,28 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
 /// to a valid 6-bit chunk.
 ///
 /// See <https://gpsd.gitlab.io/gpsd/AIVDM.html> for more details.
-pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
+pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<AisRawData> {
     let bit_count = data.len() * 6;
     let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
+    #[cfg(any(feature = "std", feature = "alloc"))]
     let mut output = vec![0; byte_count];
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    let mut output = {
+        let mut output = AisRawData::default();
+        output
+            .resize(byte_count, 0)
+            .map_err(|_| crate::errors::Error::from("Unarmor output vector too large"))?;
+        output
+    };
     let mut offset = 0;
     for byte in data {
         let unarmored = match *byte {
             48..=87 => byte - 48,
             96..=119 => byte - 56,
+            #[cfg(any(feature = "std", feature = "alloc"))]
             _ => return Err(format!("Value out of range: {}", byte).into()),
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            _ => return Err("Armored byte value out of range".into()),
         } << 2;
         let offset_byte = offset / 8;
         let offset_bit = offset % 8;
@@ -132,10 +154,11 @@ pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
             1..=7 => bit_count % 8,
             _ => unreachable!(),
         };
-        let final_idx = output.len() - 1;
+        let final_idx = byte_count - 1;
         {
             let byte = &mut output[final_idx];
-            let shift = (8 - bits_in_final_byte) + std::cmp::min(fill_bits, bits_in_final_byte);
+            let shift =
+                (8 - bits_in_final_byte) + lib::std::cmp::min(fill_bits, bits_in_final_byte);
             *byte &= match shift {
                 0..=7 => 0xffu8 << shift,
                 8 => 0x0u8,
@@ -148,6 +171,18 @@ pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<Vec<u8>> {
         }
     }
     Ok(output)
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+#[inline]
+fn push_unwrap<T>(list: &mut Vec<T>, item: T) {
+    list.push(item);
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[inline]
+fn push_unwrap<T: core::fmt::Debug, const C: usize>(list: &mut lib::std::vec::Vec<T, C>, item: T) {
+    list.push(item).unwrap();
 }
 
 #[cfg(test)]

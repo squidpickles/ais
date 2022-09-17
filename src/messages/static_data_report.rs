@@ -3,6 +3,7 @@ use super::parsers::*;
 use super::types::*;
 use super::AisMessageType;
 use crate::errors::Result;
+use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
@@ -20,7 +21,7 @@ impl<'a> AisMessageType<'a> for StaticDataReport {
         "Static Data Report"
     }
 
-    fn parse(data: &[u8]) -> Result<Self> {
+    fn parse(data: &'a [u8]) -> Result<Self> {
         let (_, report) = parse_message(data)?;
         Ok(report)
     }
@@ -33,18 +34,18 @@ pub enum MessagePart {
     /// Part A contains just the vessel name
     PartA {
         /// Name of the vessel in the report
-        vessel_name: String,
+        vessel_name: AsciiString,
     },
     /// Part B is further split into two parts, depending on whether
     /// the broadcasting entity is an auxiliary craft, or of the main
     /// ship
     PartB {
         ship_type: Option<ShipType>,
-        vendor_id: String,
-        model_serial: String,
+        vendor_id: AsciiString,
+        model_serial: AsciiString,
         unit_model_code: u8,
         serial_number: u32,
-        callsign: String,
+        callsign: AsciiString,
         dimension_to_bow: u16,
         dimension_to_stern: u16,
         dimension_to_port: u16,
@@ -61,7 +62,7 @@ fn parse_message_part(data: (&[u8], usize)) -> IResult<(&[u8], usize), MessagePa
             let (data, vessel_name) = parse_6bit_ascii(data, 120)?;
             // Senders occasionally skip sending the spare bits, so this is optional
             let (data, _spare) =
-                take_bits::<_, u8, _, _>(std::cmp::min(remaining_bits(data), 7))(data)?;
+                take_bits::<_, u8, _, _>(lib::std::cmp::min(remaining_bits(data), 7))(data)?;
             Ok((data, MessagePart::PartA { vessel_name }))
         }
         1 => {
@@ -127,7 +128,7 @@ mod tests {
     fn test_part_a_message() {
         let bytestream = b"H6:lEgQL4r1<QDr0P4pN3KSKP00";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = StaticDataReport::parse(&bitstream).unwrap();
+        let message = StaticDataReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.mmsi, 413996478);
         match message.message_part {
             MessagePart::PartA { vessel_name } => {
@@ -141,7 +142,7 @@ mod tests {
     fn test_part_b_main_vessel_message() {
         let bytestream = b"H3mr@L4NC=D62?P<7nmpl00@8220";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = StaticDataReport::parse(&bitstream).unwrap();
+        let message = StaticDataReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.mmsi, 257855600);
         match message.message_part {
             MessagePart::PartB {
@@ -166,7 +167,7 @@ mod tests {
     fn test_part_b_auxiliary_vessel_message() {
         let bytestream = b"H>cfmI4UFC@0DAN00000000H3110";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = StaticDataReport::parse(&bitstream).unwrap();
+        let message = StaticDataReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.mmsi, 985380196);
         match message.message_part {
             MessagePart::PartB {

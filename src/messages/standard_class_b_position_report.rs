@@ -124,7 +124,7 @@ mod tests {
     fn test_position() {
         let bytestream = b"B6:hQDh0029Pt<4TAS003h6TSP00";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let report = StandardClassBPositionReport::parse(&bitstream).unwrap();
+        let report = StandardClassBPositionReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(report.message_type, 18);
         assert_eq!(report.repeat_indicator, 0);
         assert_eq!(report.mmsi, 413933907);

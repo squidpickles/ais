@@ -134,7 +134,7 @@ mod tests {
     fn test_position() {
         let bytestream = b"13u?etPv2;0n:dDPwUM1U1Cb069D";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let position = PositionReport::parse(&bitstream).unwrap();
+        let position = PositionReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(position.message_type, 1);
         assert_eq!(position.repeat_indicator, 0);
         assert_eq!(position.mmsi, 265547250);
@@ -172,7 +172,7 @@ mod tests {
     fn test_type1() {
         let bytestream = b"16SteH0P00Jt63hHaa6SagvJ087r";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let position = PositionReport::parse(&bitstream).unwrap();
+        let position = PositionReport::parse(bitstream.as_ref()).unwrap();
         f32_equal_naive(position.longitude.unwrap(), -70.7582);
         if let RadioStatus::Sotdma(radio_status) = position.radio_status {
             assert_eq!(radio_status.sync_state, SyncState::UtcDirect);
@@ -187,7 +187,7 @@ mod tests {
     fn test_type3() {
         let bytestream = b"38Id705000rRVJhE7cl9n;160000";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let position = PositionReport::parse(&bitstream).unwrap();
+        let position = PositionReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(position.message_type, 3);
         assert_eq!(position.mmsi, 563808000);
         assert_eq!(
@@ -213,7 +213,7 @@ mod tests {
     fn test_maneuver_indicator_out_of_spec() {
         let bytestream = b"33nQ:B50000FiEBRjpcK19qSR>`<";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let position = PositionReport::parse(&bitstream).unwrap();
+        let position = PositionReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(
             position.maneuver_indicator,
             Some(ManeuverIndicator::Unknown(3))

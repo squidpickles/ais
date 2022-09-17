@@ -23,7 +23,7 @@ pub struct ExtendedClassBPositionReport {
     pub course_over_ground: Option<f32>,
     pub true_heading: Option<u16>,
     pub timestamp: u8,
-    pub name: String,
+    pub name: AsciiString,
     pub type_of_ship_and_cargo: Option<ShipType>,
     pub dimension_to_bow: u16,
     pub dimension_to_stern: u16,
@@ -40,7 +40,7 @@ impl<'a> AisMessageType<'a> for ExtendedClassBPositionReport {
         "Extended Class B Position Report"
     }
 
-    fn parse(data: &[u8]) -> Result<Self> {
+    fn parse(data: &'a [u8]) -> Result<Self> {
         let (_, report) = parse_base(data)?;
         Ok(report)
     }
@@ -109,7 +109,7 @@ mod tests {
     fn test_position() {
         let bytestream = b"C6:ijoP00:9NNF4TEspILDN0Vc0jNc1WWV0000000000S2<6R20P";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let report = ExtendedClassBPositionReport::parse(&bitstream).unwrap();
+        let report = ExtendedClassBPositionReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(report.message_type, 19);
         assert_eq!(report.repeat_indicator, 0);
         assert_eq!(report.mmsi, 413954782);

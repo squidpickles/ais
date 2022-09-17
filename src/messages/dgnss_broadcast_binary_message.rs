@@ -2,9 +2,18 @@
 use super::parsers::*;
 use super::AisMessageType;
 use crate::errors::Result;
+use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+const MAX_DATA_SIZE_BYTES: usize = 119;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type CorrectionData = lib::std::vec::Vec<u8>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type CorrectionData = lib::std::vec::Vec<u8, MAX_DATA_SIZE_BYTES>;
 
 #[derive(Debug, PartialEq)]
 pub struct DgnssBroadcastBinaryMessage {
@@ -24,7 +33,7 @@ pub struct DifferentialCorrectionData {
     pub sequence_number: u8,
     pub n: u8,
     pub health: u8,
-    pub data: Vec<u8>,
+    pub data: CorrectionData,
 }
 
 impl DifferentialCorrectionData {
@@ -35,6 +44,15 @@ impl DifferentialCorrectionData {
         let (data, sequence_number) = take_bits(3u8)(data)?;
         let (data, n) = take_bits(5u8)(data)?;
         let (data, health) = take_bits(3u8)(data)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let data_owned = data.0.into();
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let data_owned = data.0.try_into().map_err(|_| {
+            nom::Err::Failure(nom::error::Error::new(
+                data,
+                nom::error::ErrorKind::TooLarge,
+            ))
+        })?;
         Ok((
             (<&[u8]>::default(), 0),
             Self {
@@ -44,7 +62,7 @@ impl DifferentialCorrectionData {
                 sequence_number,
                 n,
                 health,
-                data: data.0.to_vec(),
+                data: data_owned,
             },
         ))
     }
@@ -55,7 +73,7 @@ impl<'a> AisMessageType<'a> for DgnssBroadcastBinaryMessage {
         "DGNSS Broadcast Binary Message"
     }
 
-    fn parse(data: &[u8]) -> Result<Self> {
+    fn parse(data: &'a [u8]) -> Result<Self> {
         let (_, message) = parse_base(data)?;
         Ok(message)
     }
@@ -110,7 +128,7 @@ mod tests {
         let bytestream =
             b"A02VqLPA4I6C07h5Ed1h<OrsuBTTwS?r:C?w`?la<gno1RTRwSP9:BcurA8a:Oko02TSwu8<:Jbb";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = DgnssBroadcastBinaryMessage::parse(&bitstream).unwrap();
+        let message = DgnssBroadcastBinaryMessage::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 17);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 2734450);

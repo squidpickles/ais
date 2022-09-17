@@ -90,7 +90,7 @@ pub struct AidToNavigationReport {
     pub repeat_indicator: u8,
     pub mmsi: u32,
     pub aid_type: Option<NavaidType>,
-    pub name: String,
+    pub name: AsciiString,
     pub accuracy: Accuracy,
     pub longitude: Option<f32>,
     pub latitude: Option<f32>,
@@ -112,7 +112,7 @@ impl<'a> AisMessageType<'a> for AidToNavigationReport {
         "Aid to Navigation Report"
     }
 
-    fn parse(data: &[u8]) -> Result<Self> {
+    fn parse(data: &'a [u8]) -> Result<Self> {
         let (_, report) = parse_message(data)?;
         Ok(report)
     }
@@ -177,7 +177,7 @@ mod tests {
     fn test_type21_not_extended() {
         let bytestream = b"E>kb9II9S@0`8@:9ah;0TahIW@@;Uafb:r5Ih00003vP100";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = AidToNavigationReport::parse(&bitstream).unwrap();
+        let message = AidToNavigationReport::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 21);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 993692005);

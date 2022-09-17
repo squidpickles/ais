@@ -92,7 +92,7 @@ mod tests {
     fn test_type11() {
         let bytestream = b";03sl8AvA;5AO7gnf@<FdSA00000";
         let bitstream = crate::messages::unarmor(bytestream, 0).unwrap();
-        let message = UtcDateResponse::parse(&bitstream).unwrap();
+        let message = UtcDateResponse::parse(bitstream.as_ref()).unwrap();
         assert_eq!(message.message_type, 11);
         assert_eq!(message.repeat_indicator, 0);
         assert_eq!(message.mmsi, 4125729);

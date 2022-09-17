@@ -11,12 +11,27 @@ mod err {
     /// Custom `Result` to prepopulate `Error` type
     pub type Result<T> = lib::std::result::Result<T, Error>;
     /// A general error in parsing an AIS message
-    #[derive(Debug)]
+    #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum Error {
         //#[error("invalid NMEA sentence: '{msg}'")]
         Nmea { msg: String },
         //#[error("checksum mismatch; expected: {expected:#X}, received: {found:#X}")]
         Checksum { expected: u8, found: u8 },
+    }
+
+    #[cfg(feature = "std")]
+    impl std::error::Error for Error {}
+
+    impl core::fmt::Display for Error {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            let msg = match self {
+                Self::Nmea { msg } => format!("Error parsing NMEA content: {}", msg),
+                Self::Checksum { expected, found } => {
+                    format!("Checksum error; expected 0x{expected:x}, found 0x{found:x}")
+                }
+            };
+            f.write_str(&msg)
+        }
     }
 
     impl From<&str> for Error {
@@ -63,7 +78,7 @@ mod err {
     /// Custom `Result` to prepopulate `Error` type
     pub type Result<T> = lib::std::result::Result<T, Error>;
     /// A general error in parsing an AIS message
-    #[derive(Debug)]
+    #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub enum Error {
         //#[error("invalid NMEA sentence: '{msg}'")]
         Nmea { msg: &'static str },

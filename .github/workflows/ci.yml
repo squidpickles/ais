@@ -45,6 +45,7 @@ jobs:
         with:
           command: install
           args: clippy-sarif sarif-fmt
+        continue-on-error: true # This will error if it's already installed
 
       - name: Clippy
         run:

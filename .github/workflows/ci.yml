@@ -7,7 +7,7 @@ on:
   
 jobs:
   test:
-    name: ${{ matrix.make.name }} (${{ matrix.os }})
+    name: ${{ matrix.os }} / ${{ rust }} (${{ feature }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

@@ -1,5 +1,5 @@
 # AIS parser
-[![Build Status](https://travis-ci.org/squidpickles/ais.svg?branch=master)](https://travis-ci.org/squidpickles/ais)
+[![Build Status](https://travis-ci.com/squidpickles/ais.svg?branch=master)](https://travis-ci.com/squidpickles/ais)
 This is the beginning of a parser for [AIS](https://en.wikipedia.org/wiki/Automatic_identification_system) messages, written in Rust.
 
 ## Documentation
@@ -67,6 +67,16 @@ Right now, only a few common types are supported. They are:
 - Data Link Management Message (type 20)
 - Aid to Navigation Report (type 21)
 - Static Data Report (type 24)
-- 
 
 Others to come soon, I hope!
+
+## `no_std` support
+This library has experimental support for `no_std`; add the library like this to your `Cargo.toml`:
+```yaml
+ais = { version = "0.9", default-features = false }
+```
+Some AIS messages have variable length fields; this is accomplished using [`heapless`](https://crates.io/crates/heapless) `Vec` and `String` types, allocating the maximum possible data size on the stack.
+
+If you have access to an allocator, opting into the `alloc` feature may be more space efficient, as observed messages sizes are often much smaller than the maximum possible.
+
+The `std` feature is the default, and it is more or less identical to the `alloc` version; it's required to build the binary CLI tool.

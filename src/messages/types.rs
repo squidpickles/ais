@@ -1,8 +1,11 @@
 //! Common data types
 
+use serde::{Deserialize, Serialize};
+
 /// Electronic Position Fixing Device type. This is the
 /// type of device used for determining the object's
 /// position.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum EpfdType {
     Gps,
@@ -34,7 +37,8 @@ impl EpfdType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ShipType {
     Reserved,
     WingInGround,
@@ -168,6 +172,7 @@ impl ShipType {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Dte {
     Ready,
@@ -190,6 +195,7 @@ impl From<u8> for Dte {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Debug, PartialEq, Eq)]
 pub enum AssignedMode {
     Autonomous,

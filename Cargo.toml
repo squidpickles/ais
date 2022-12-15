@@ -20,6 +20,7 @@ default = ["std"]
 [dependencies]
 nom = { version = "7", default-features = false }
 heapless = { version = "0.7" }
+serde = { version = "1.0.152", features = ["derive"] }
 
 [[bin]]
 name = "aisparser"

@@ -19,7 +19,7 @@ mod radio_status;
 pub mod standard_class_b_position_report;
 pub mod static_and_voyage_related_data;
 pub mod static_data_report;
-mod types;
+pub mod types;
 pub mod utc_date_response;
 
 pub use parsers::message_type;

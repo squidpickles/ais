@@ -34,7 +34,8 @@ impl EpfdType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ShipType {
     Reserved(u8),
     WingInGround,
@@ -162,6 +163,80 @@ impl ShipType {
             95..=98 => Some(Self::OtherReserved(data)),
             99 => Some(Self::OtherNoAdditionalInformation),
             100..=u8::MAX => None,
+        }
+    }
+}
+
+impl From<u8> for ShipType {
+    fn from(value: u8) -> Self {
+        ShipType::parse(value).unwrap()
+    }
+}
+
+impl From<ShipType> for u8 {
+    fn from(value: ShipType) -> u8 {
+        use ShipType::*;
+
+        match value {
+            Reserved(v) => v,
+            WingInGround => 20,
+            WingInGroundHazardousCategoryA => 21,
+            WingInGroundHazardousCategoryB => 22,
+            WingInGroundHazardousCategoryC => 23,
+            WingInGroundHazardousCategoryD => 24,
+            WingInGroundReserved(v) => v,
+            Fishing => 30,
+            Towing => 31,
+            TowingLarge => 32,
+            Dredging => 33,
+            DivingOps => 34,
+            MilitaryOps => 35,
+            Sailing => 36,
+            PleasureCraft => 37,
+            HighSpeedCraft => 40,
+            HighSpeedCraftHazardousCategoryA => 41,
+            HighSpeedCraftHazardousCategoryB => 42,
+            HighSpeedCraftHazardousCategoryC => 43,
+            HighSpeedCraftHazardousCategoryD => 44,
+            HighSpeedCraftReserved(v) => v,
+            HighSpeedCraftNoAdditionalInformation => 49,
+            PilotVessel => 50,
+            SearchAndRescueVessel => 51,
+            Tug => 52,
+            PortTender => 53,
+            AntiPollutionEquipment => 54,
+            LawEnforcement => 55,
+            SpareLocalVessel(v) => v,
+            MedicalTransport => 58,
+            NoncombatantShip => 59,
+            Passenger => 60,
+            PassengerHazardousCategoryA => 61,
+            PassengerHazardousCategoryB => 62,
+            PassengerHazardousCategoryC => 63,
+            PassengerHazardousCategoryD => 64,
+            PassengerReserved(v) => v,
+            PassengerNoAdditionalInformation => 69,
+            Cargo => 70,
+            CargoHazardousCategoryA => 71,
+            CargoHazardousCategoryB => 72,
+            CargoHazardousCategoryC => 73,
+            CargoHazardousCategoryD => 74,
+            CargoReserved(v) => v,
+            CargoNoAdditionalInformation => 79,
+            Tanker => 80,
+            TankerHazardousCategoryA => 81,
+            TankerHazardousCategoryB => 82,
+            TankerHazardousCategoryC => 83,
+            TankerHazardousCategoryD => 84,
+            TankerReserved(v) => v,
+            TankerNoAdditionalInformation => 89,
+            Other => 90,
+            OtherHazardousCategoryA => 91,
+            OtherHazardousCategoryB => 92,
+            OtherHazardousCategoryC => 93,
+            OtherHazardousCategoryD => 94,
+            OtherReserved(v) => v,
+            OtherNoAdditionalInformation => 99,
         }
     }
 }

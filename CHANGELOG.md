@@ -3,9 +3,17 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2023-02-17
+### Added
+- `From<u8> for ShipType` and `From<ShipType> for u8` implementations (thanks [@keesverruijt](https://github.com/keesverruijt))
+### Changed
+- `types` module is now `pub` (thanks [@keesverruijt](https://github.com/keesverruijt))
+- `ShipType` reserved fields are included as data in the enum (thanks [@keesverruijt](https://github.com/keesverruijt))
+
+## [0.9.0] - 2022-09-17
 ### Added
 - Support for message type 11 (UTC/Date Response)
+- `no_std` support
 
 ## [0.8.0] - 2021-11-13
 ### Added

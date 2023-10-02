@@ -9,7 +9,7 @@ use nom::bytes::complete::{tag, take, take_until};
 use nom::character::complete::{anychar, digit1};
 use nom::combinator::{map, map_res, opt, peek, verify};
 use nom::number::complete::hex_u32;
-use nom::sequence::terminated;
+use nom::sequence::{delimited, terminated};
 use nom::IResult;
 
 pub const MAX_SENTENCE_SIZE_BYTES: usize = 384;
@@ -268,6 +268,7 @@ fn parse_ais_sentence(data: &[u8]) -> IResult<&[u8], AisSentence> {
 
 /// Named parser for an overall NMEA 0183 sentence
 fn parse_nmea_sentence(data: &[u8]) -> IResult<&[u8], (&[u8], AisSentence, u8)> {
+    let (data, _) = opt(delimited(tag("\\"), take_until("\\"), tag("\\")))(data)?;
     let (data, _) = alt((tag("!"), tag("$")))(data)?;
     let (data, raw) = peek(take_until("*"))(data)?;
     let (data, msg) = terminated(parse_ais_sentence, tag("*"))(data)?;
@@ -291,6 +292,10 @@ mod tests {
     const NO_CHANNEL: &[u8] = b"!AIVDM,1,1,,,34RvgN500005tLTMfjiTs3u`0>`<,0*7A";
     const AIS_START_IDX: usize = 14;
     const AIS_END_IDX: usize = 61;
+    const WITH_TAG_BLOCK: &[u8] =
+        b"\\s:2573345,c:1696241893*00\\!AIVDM,1,1,,A,E>kb9I99S@0`8@:9ah;0TahI7@@;V4=v:nv;h00003vP100,0*7A";
+    const WITH_BAD_TAG_BLOCK: &[u8] =
+        b"s:2573345,c:1696241893*00\\!AIVDM,1,1,,A,E>kb9I99S@0`8@:9ah;0TahI7@@;V4=v:nv;h00003vP100,0*7A";
 
     #[test]
     fn parse_valid_structure() {
@@ -414,5 +419,37 @@ mod tests {
         let result = parse_nmea_sentence(NO_CHANNEL).unwrap();
         let sentence = (result.1).1;
         assert_eq!(sentence.channel, None);
+    }
+
+    #[test]
+    fn parse_valid_sentence_with_tag_block() {
+        let result = parse_nmea_sentence(WITH_TAG_BLOCK).unwrap();
+        assert_eq!(result.0, b"");
+        assert_eq!(
+            (result.1).1,
+            AisSentence {
+                talker_id: TalkerId::AI,
+                report_type: AisReportType::VDM,
+                num_fragments: 1,
+                fragment_number: 1,
+                message_id: None,
+                channel: Some('A'),
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX].into(),
+                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
+                    .try_into()
+                    .unwrap(),
+                fill_bit_count: 0,
+                message_type: 17,
+                message: None,
+            }
+        );
+        assert_eq!((result.1).2, 122);
+    }
+
+    #[test]
+    fn parse_sentence_with_invalid_tag_block() {
+        assert!(parse_ais_sentence(&WITH_BAD_TAG_BLOCK[1..64]).is_err());
     }
 }

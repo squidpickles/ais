@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.11.0] - 2023-11-05
 ### Added
-- NMEA tag blocks are now accepted, but currently ignored (thanks [@jkr78](https://github.com/jkr78)
+- NMEA tag blocks are now accepted, but currently ignored (thanks [@jkr78](https://github.com/jkr78))
 ### Changed
 - `radio_status` and `navigation` modules are now `pub` (thanks [@ebuckley](https://github.com/ebuckley))
 

@@ -10,12 +10,12 @@ pub mod data_link_management_message;
 pub mod dgnss_broadcast_binary_message;
 pub mod extended_class_b_position_report;
 pub mod interrogation;
-mod navigation;
+pub mod navigation;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 mod nom_noalloc;
 mod parsers;
 pub mod position_report;
-mod radio_status;
+pub mod radio_status;
 pub mod standard_class_b_position_report;
 pub mod static_and_voyage_related_data;
 pub mod static_data_report;

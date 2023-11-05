@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2023-11-05
+### Added
+- NMEA tag blocks are now accepted, but currently ignored (thanks [@jkr78](https://github.com/jkr78)
+### Changed
+- `radio_status` and `navigation` modules are now `pub` (thanks [@ebuckley](https://github.com/ebuckley))
+
 ## [0.10.0] - 2023-02-17
 ### Added
 - `From<u8> for ShipType` and `From<ShipType> for u8` implementations (thanks [@keesverruijt](https://github.com/keesverruijt))

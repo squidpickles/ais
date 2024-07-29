@@ -59,7 +59,7 @@ impl<'a> AisMessageType<'a> for DataLinkManagementMessage {
     }
 }
 
-fn parse_base<'a> (data: &'a [u8]) -> IResult<&'a [u8], DataLinkManagementMessage> {
+fn parse_base<'a>(data: &'a [u8]) -> IResult<&'a [u8], DataLinkManagementMessage> {
     bits(move |data: (&'a [u8], usize)| -> IResult<_, _> {
         let (data, message_type) = take_bits(6u8)(data)?;
         let (data, repeat_indicator) = take_bits(2u8)(data)?;

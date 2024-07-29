@@ -3,6 +3,7 @@
 use crate::lib;
 
 use crate::errors::{Error, Result};
+use crate::messages::tag_block::TagBlock;
 use crate::messages::{self, AisMessage};
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until};
@@ -127,9 +128,31 @@ impl AisParser {
     /// If `decode` is `true`, the internal AIS message will also be parsed
     /// If it is `false`, then internal AIS messages will be ignored.
     /// In both cases, AIS data will be passed along raw.
-    pub fn parse(&mut self, line: &[u8], decode: bool) -> Result<AisFragments> {
+    pub fn parse(&mut self, line: &[u8], decode: bool) -> Result<(Option<TagBlock>, AisFragments)> {
+        // Convert the line to a UTF-8 string
+        let line_str = std::str::from_utf8(line).map_err(|_| "Invalid UTF-8 sequence")?;
+
+        // Check if the line contains a tag block
+        let (tag_block, _nmea_sentence) = if line_str.starts_with('\\') {
+            let parts: Vec<&str> = line_str.splitn(3, '\\').collect();
+            if parts.len() == 3 {
+                let tag_block_str = format!("\\{}\\", parts[1]); // Parse the tag block part
+                let tag_block = TagBlock::parse(&tag_block_str)?;
+                (tag_block, parts[2]) // Extract the NMEA sentence part
+            } else {
+                (None, line_str) // No tag block present
+            }
+        } else {
+            (None, line_str) // No tag block present
+        };
+
+        // Parse the NMEA sentence
         let (_, (data, mut ais_sentence, checksum)) = parse_nmea_sentence(line)?;
+
+        // Verify the checksum
         Self::check_checksum(data, checksum)?;
+
+        // Handle fragmented sentences
         if ais_sentence.has_more() {
             if ais_sentence.fragment_number == 1 {
                 self.message_id = ais_sentence.message_id;
@@ -137,12 +160,13 @@ impl AisParser {
                 self.data = AisRawData::default();
             }
             self.verify_and_extend_data(&ais_sentence)?;
-            Ok(AisFragments::Incomplete(ais_sentence))
+            Ok((tag_block, AisFragments::Incomplete(ais_sentence)))
         } else {
+            // If the sentence is complete
             if ais_sentence.is_fragment() {
                 self.verify_and_extend_data(&ais_sentence)?;
                 let mut data = AisRawData::default();
-                lib::std::mem::swap(&mut data, &mut self.data);
+                std::mem::swap(&mut data, &mut self.data);
                 ais_sentence.data = data;
             }
             if decode {
@@ -150,7 +174,7 @@ impl AisParser {
                     messages::unarmor(&ais_sentence.data, ais_sentence.fill_bit_count as usize)?;
                 ais_sentence.message = Some(messages::parse(&unarmored)?)
             }
-            Ok(AisFragments::Complete(ais_sentence))
+            Ok((tag_block, AisFragments::Complete(ais_sentence)))
         }
     }
 
@@ -358,7 +382,14 @@ mod tests {
     #[test]
     fn parse_using_struct_valid() {
         let mut parser = AisParser::new();
-        let result = parser.parse(GOOD_CHECKSUM, false).unwrap();
+        let (tag_block, result) = parser.parse(GOOD_CHECKSUM, false).unwrap();
+
+        assert!(
+            tag_block.is_none(),
+            "Expected no TagBlock, but found {:?}",
+            tag_block
+        );
+
         assert_eq!(
             result,
             AisFragments::Complete(AisSentence {
@@ -398,8 +429,21 @@ mod tests {
     #[test]
     fn parse_multiple_fragments() {
         let mut parser = AisParser::new();
-        let frag1 = parser.parse(FRAGMENT_1, false).unwrap();
-        let frag2 = parser.parse(FRAGMENT_2, false).unwrap();
+
+        let (tag_block1, frag1) = parser.parse(FRAGMENT_1, false).unwrap();
+        assert!(
+            tag_block1.is_none(),
+            "Expected no TagBlock for fragment 1, but found {:?}",
+            tag_block1
+        );
+
+        let (tag_block2, frag2) = parser.parse(FRAGMENT_2, false).unwrap();
+        assert!(
+            tag_block2.is_none(),
+            "Expected no TagBlock for fragment 2, but found {:?}",
+            tag_block2
+        );
+
         if let AisFragments::Complete(_) = frag1 {
             panic!("Expected frag1 to be incomplete, but it was {:?}", frag1);
         }

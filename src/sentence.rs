@@ -310,9 +310,7 @@ mod tests {
                 fragment_number: 1,
                 message_id: None,
                 channel: Some('A'),
-                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
-                    .try_into()
-                    .unwrap(),
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX].into(),
                 fill_bit_count: 0,
                 message_type: 17,
                 message: None,

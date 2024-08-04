@@ -310,7 +310,12 @@ mod tests {
                 fragment_number: 1,
                 message_id: None,
                 channel: Some('A'),
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX].into(),
+                #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+                data: GOOD_CHECKSUM[AIS_START_IDX..AIS_END_IDX]
+                    .try_into()
+                    .unwrap(),
                 fill_bit_count: 0,
                 message_type: 17,
                 message: None,

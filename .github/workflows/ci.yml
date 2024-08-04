@@ -5,10 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: read
-  
 jobs:
   test:
     name: ${{ matrix.os }} / ${{ matrix.rust }} (${{ matrix.feature }})

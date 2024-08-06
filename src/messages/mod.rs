@@ -21,6 +21,7 @@ pub mod static_and_voyage_related_data;
 pub mod static_data_report;
 pub mod types;
 pub mod utc_date_response;
+pub mod standard_aircraft_position_report;
 
 pub use parsers::message_type;
 
@@ -42,6 +43,7 @@ pub enum AisMessage {
     AidToNavigationReport(aid_to_navigation_report::AidToNavigationReport),
     StaticDataReport(static_data_report::StaticDataReport),
     UtcDateResponse(utc_date_response::UtcDateResponse),
+    StandardAircraftPositionReport(standard_aircraft_position_report::SARPositionReport),
 }
 
 /// Trait that describes specific types of AIS messages
@@ -70,6 +72,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
             binary_broadcast_message::BinaryBroadcastMessage::parse(unarmored)?,
+        )),
+        9 => Ok(AisMessage::StandardAircraftPositionReport(
+            standard_aircraft_position_report::SARPositionReport::parse(unarmored)?,
         )),
         11 => Ok(AisMessage::UtcDateResponse(
             utc_date_response::UtcDateResponse::parse(unarmored)?,

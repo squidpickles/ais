@@ -126,7 +126,7 @@ impl ItdmaMessage {
 
 pub fn parse_radio(input: (&[u8], usize), msg_type: u8) -> IResult<(&[u8], usize), RadioStatus> {
     match msg_type {
-        1 | 2 | 4 | 11 => SotdmaMessage::parse(input),
+        1 | 2 | 4 | 11 | 9 => SotdmaMessage::parse(input),
         3 => ItdmaMessage::parse(input),
         _ => Err(nom::Err::Failure(nom::error::Error::new(
             input,

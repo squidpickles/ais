@@ -3,25 +3,31 @@ use crate::errors::Result;
 use crate::lib;
 use crate::sentence::AisRawData;
 
+pub mod addressed_safety_related;
 pub mod aid_to_navigation_report;
 pub mod base_station_report;
+pub mod binary_addressed;
 pub mod binary_broadcast_message;
 pub mod data_link_management_message;
 pub mod dgnss_broadcast_binary_message;
 pub mod extended_class_b_position_report;
 pub mod interrogation;
+pub mod long_range_ais_broadcast;
 pub mod navigation;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 mod nom_noalloc;
 mod parsers;
 pub mod position_report;
 pub mod radio_status;
+pub mod safety_related_acknowledgment;
+pub mod safety_related_broadcast;
+pub mod standard_aircraft_position_report;
 pub mod standard_class_b_position_report;
 pub mod static_and_voyage_related_data;
 pub mod static_data_report;
 pub mod types;
+pub mod utc_date_inquiry;
 pub mod utc_date_response;
-pub mod standard_aircraft_position_report;
 
 pub use parsers::message_type;
 
@@ -44,6 +50,12 @@ pub enum AisMessage {
     StaticDataReport(static_data_report::StaticDataReport),
     UtcDateResponse(utc_date_response::UtcDateResponse),
     StandardAircraftPositionReport(standard_aircraft_position_report::SARPositionReport),
+    UtcDateInquiry(utc_date_inquiry::UtcDateInquiry),
+    AddressedSafetyRelatedMessage(addressed_safety_related::AddressedSafetyRelatedMessage),
+    SafetyRelatedBroadcastMessage(safety_related_broadcast::SafetyRelatedBroadcastMessage),
+    SafetyRelatedAcknowledgment(safety_related_acknowledgment::SafetyRelatedAcknowledge),
+    LongRangeAisBroadcastMessage(long_range_ais_broadcast::LongRangeAisBroadcastMessage),
+    BinaryAddressedMessage(binary_addressed::BinaryAddressedMessage),
 }
 
 /// Trait that describes specific types of AIS messages
@@ -70,14 +82,29 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         5 => Ok(AisMessage::StaticAndVoyageRelatedData(
             static_and_voyage_related_data::StaticAndVoyageRelatedData::parse(unarmored)?,
         )),
+        6 => Ok(AisMessage::BinaryAddressedMessage(
+            binary_addressed::BinaryAddressedMessage::parse(unarmored)?,
+        )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
             binary_broadcast_message::BinaryBroadcastMessage::parse(unarmored)?,
         )),
         9 => Ok(AisMessage::StandardAircraftPositionReport(
             standard_aircraft_position_report::SARPositionReport::parse(unarmored)?,
         )),
+        10 => Ok(AisMessage::UtcDateInquiry(
+            utc_date_inquiry::UtcDateInquiry::parse(unarmored)?,
+        )),
         11 => Ok(AisMessage::UtcDateResponse(
             utc_date_response::UtcDateResponse::parse(unarmored)?,
+        )),
+        12 => Ok(AisMessage::AddressedSafetyRelatedMessage(
+            addressed_safety_related::AddressedSafetyRelatedMessage::parse(unarmored)?,
+        )),
+        13 => Ok(AisMessage::SafetyRelatedAcknowledgment(
+            safety_related_acknowledgment::SafetyRelatedAcknowledge::parse(unarmored)?,
+        )),
+        14 => Ok(AisMessage::SafetyRelatedBroadcastMessage(
+            safety_related_broadcast::SafetyRelatedBroadcastMessage::parse(unarmored)?,
         )),
         15 => Ok(AisMessage::Interrogation(
             interrogation::Interrogation::parse(unarmored)?,
@@ -99,6 +126,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         24 => Ok(AisMessage::StaticDataReport(
             static_data_report::StaticDataReport::parse(unarmored)?,
+        )),
+        27 => Ok(AisMessage::LongRangeAisBroadcastMessage(
+            long_range_ais_broadcast::LongRangeAisBroadcastMessage::parse(unarmored)?,
         )),
         #[cfg(any(feature = "std", feature = "alloc"))]
         _ => Err(format!("Unimplemented type: {}", result).into()),

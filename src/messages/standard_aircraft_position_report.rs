@@ -3,14 +3,13 @@ use super::navigation::*;
 use super::parsers::*;
 use super::radio_status::*;
 
+use super::types::AssignedMode;
+use super::types::Dte;
 use super::AisMessageType;
 use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
-use super::types::Dte;
-use super::types::AssignedMode;
-
 
 #[derive(Debug, PartialEq)]
 pub struct SARPositionReport {
@@ -30,7 +29,6 @@ pub struct SARPositionReport {
     pub radio_status: RadioStatus,
 }
 
-
 impl<'a> AisMessageType<'a> for SARPositionReport {
     fn name(&self) -> &'static str {
         "Standard SAR Aircraft Position Report"
@@ -41,7 +39,6 @@ impl<'a> AisMessageType<'a> for SARPositionReport {
         Ok(report)
     }
 }
-
 
 fn parse_base(data: &[u8]) -> IResult<&[u8], SARPositionReport> {
     bits(move |data| -> IResult<_, _> {
@@ -96,7 +93,7 @@ fn parse_altitude(data: u16) -> Option<u16> {
 /// Parse the speed over ground for SAR Position Report (type 9)
 fn parse_speed_over_ground_sar(data: u16) -> Option<f32> {
     match data {
-        1023 => None,       // Speed not available
+        1023 => None,         // Speed not available
         1022 => Some(1022.0), // 1022 knots or higher
         _ => Some(data as f32),
     }
@@ -137,7 +134,7 @@ mod tests {
             }
         } else {
             panic!("Expected SOTDMA message");
-        }     
+        }
         assert!(!report.raim);
     }
 }

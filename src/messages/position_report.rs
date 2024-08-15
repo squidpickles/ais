@@ -100,7 +100,7 @@ pub enum NavigationStatus {
 }
 
 impl NavigationStatus {
-    fn parse(data: u8) -> Option<Self> {
+    pub fn parse(data: u8) -> Option<Self> {
         match data {
             0 => Some(Self::UnderWayUsingEngine),
             1 => Some(Self::AtAnchor),

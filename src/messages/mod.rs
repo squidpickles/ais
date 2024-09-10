@@ -22,7 +22,7 @@ pub mod static_data_report;
 pub mod types;
 pub mod utc_date_response;
 pub mod standard_aircraft_position_report;
-
+pub mod binary_acknowledge;
 pub use parsers::message_type;
 
 #[cfg(feature = "alloc")]
@@ -44,6 +44,7 @@ pub enum AisMessage {
     StaticDataReport(static_data_report::StaticDataReport),
     UtcDateResponse(utc_date_response::UtcDateResponse),
     StandardAircraftPositionReport(standard_aircraft_position_report::SARPositionReport),
+    BinaryAcknowledgeMessage(binary_acknowledge::BinaryAcknowledge),
 }
 
 /// Trait that describes specific types of AIS messages
@@ -69,6 +70,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         )),
         5 => Ok(AisMessage::StaticAndVoyageRelatedData(
             static_and_voyage_related_data::StaticAndVoyageRelatedData::parse(unarmored)?,
+        )),
+        7 => Ok(AisMessage::BinaryAcknowledgeMessage(
+            binary_acknowledge::BinaryAcknowledge::parse(unarmored)?,
         )),
         8 => Ok(AisMessage::BinaryBroadcastMessage(
             binary_broadcast_message::BinaryBroadcastMessage::parse(unarmored)?,

@@ -2,7 +2,7 @@ use crate::errors::Error;
 use crate::messages::tag_block::TagBlock;
 use crate::messages::AisMessage;
 use crate::sentence::{AisFragments, AisParser};
-use std::error::Error as StdError;
+use crate::lib::std::error::Error as StdError;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpStream, UdpSocket};

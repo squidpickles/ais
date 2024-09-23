@@ -12,6 +12,7 @@ use nom::combinator::{map, map_res, opt, peek, verify};
 use nom::number::complete::hex_u32;
 use nom::sequence::{delimited, terminated};
 use nom::IResult;
+use crate::lib::std::format;
 
 pub const MAX_SENTENCE_SIZE_BYTES: usize = 384;
 

@@ -6,6 +6,9 @@ use crate::lib::std::error::Error as StdError;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::{TcpStream, UdpSocket};
+use std::println;
+use std::eprintln;
+
 /// Parses a single line of NMEA data using the provided AIS parser.
 ///
 /// This function attempts to parse a given NMEA line into a tag block and an AIS message,
@@ -17,21 +20,17 @@ use tokio::net::{TcpStream, UdpSocket};
 ///
 
 async fn parse_nmea_line(parser: &mut AisParser, line: &[u8]) {
-    // Convert the line to a string
     let line_str = std::str::from_utf8(line).expect("Invalid UTF-8 sequence");
 
-    // Print the received message
+    #[cfg(feature = "std")]
     println!("Received message: {}", line_str);
 
-    // Check for a tag block by looking for the start of a NMEA sentence ('!')
     if let Some(nmea_start_idx) = line_str.find('!') {
         // Extract the tag block (everything before the '!') and the NMEA sentence
         let tag_block_str = &line_str[..nmea_start_idx];
         let nmea_sentence = &line_str[nmea_start_idx..];
 
-        // Check if there's a valid tag block (should start and end with '\')
         if tag_block_str.starts_with('\\') && tag_block_str.ends_with('\\') {
-            // Remove the leading and trailing backslashes from the tag block
             let tag_block_content = &tag_block_str[1..tag_block_str.len() - 1];
 
             // Parse the tag block
@@ -52,20 +51,24 @@ async fn parse_nmea_line(parser: &mut AisParser, line: &[u8]) {
         // Parse the NMEA sentence
         match parser.parse(nmea_sentence.as_bytes(), true) {
             Ok((_, AisFragments::Complete(sentence))) => {
+
+                #[cfg(feature = "std")]
                 println!(
                     "Parsed NMEA Sentence: {:?}\nMessage: {:?}",
                     nmea_sentence, sentence.message
                 );
             }
             Err(err) => {
+                #[cfg(feature = "std")]
                 eprintln!("Error parsing line {:?}: {:?}", nmea_sentence, err);
             }
             _ => {}
         }
 
-        // Print separator between messages
+        #[cfg(feature = "std")]
         println!("*************************");
     } else {
+        #[cfg(feature = "std")]
         eprintln!("No valid NMEA sentence found in line");
     }
 }
@@ -150,6 +153,7 @@ pub fn decode(message: &[u8]) -> Result<AisMessage, Error> {
     let mut parser = AisParser::new();
     match parser.parse(message, true)? {
         (Some(tag_block), AisFragments::Complete(sentence)) => {
+            #[cfg(feature = "std")]
             println!("TagBlock: {:?}", tag_block);
             sentence.message.ok_or(Error::Nmea {
                 msg: "Incomplete message".into(),

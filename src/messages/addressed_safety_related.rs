@@ -79,7 +79,7 @@ mod tests {
         assert_eq!(report.mmsi, 351853000);
         assert_eq!(report.seqno, 0);
         assert_eq!(report.dest_mmsi, 316123456);
-        assert_eq!(report.retransmit, false);
+        assert!(!report.retransmit);
         assert_eq!(report.text, "GOOD");
     }
 
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(report.mmsi, 271002099);
         assert_eq!(report.seqno, 0);
         assert_eq!(report.dest_mmsi, 271002111);
-        assert_eq!(report.retransmit, true);
+        assert!(report.retransmit);
         assert_eq!(report.text, "MSG FROM 271002099");
     }
 }

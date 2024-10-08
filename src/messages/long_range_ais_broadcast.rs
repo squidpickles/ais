@@ -125,16 +125,16 @@ mod tests {
         assert_eq!(report.repeat_indicator, 1);
         assert_eq!(report.mmsi, 206914217);
         assert_eq!(report.position_accuracy, Accuracy::Unaugmented);
-        assert_eq!(report.raim, false);
+        assert!(!report.raim);
         assert_eq!(
             report.navigation_status,
             Some(NavigationStatus::NotUnderCommand)
         );
-        f32_equal_naive(report.longitude.unwrap(), 137.023333);
+        f32_equal_naive(report.longitude.unwrap(), 137.02333);
         f32_equal_naive(report.latitude.unwrap(), 4.84);
         assert_eq!(report.speed_over_ground, Some(57.0));
         assert_eq!(report.course_over_ground, Some(167.0));
-        assert_eq!(report.gnss_position_status, false);
+        assert!(!report.gnss_position_status);
     }
 
     #[test]

@@ -91,7 +91,7 @@ mod tests {
         assert_eq!(report.mmsi, 150834090);
         assert_eq!(report.seqno, 3);
         assert_eq!(report.dest_mmsi, 313240222);
-        assert_eq!(report.retransmit, false);
+        assert!(!report.retransmit);
         assert_eq!(report.dac, 669);
         assert_eq!(report.fid, 11);
 
@@ -112,7 +112,7 @@ mod tests {
         assert_eq!(report.mmsi, 992509976);
         assert_eq!(report.seqno, 0);
         assert_eq!(report.dest_mmsi, 2500912);
-        assert_eq!(report.retransmit, false);
+        assert!(!report.retransmit);
         assert_eq!(report.dac, 235);
         assert_eq!(report.fid, 10);
 

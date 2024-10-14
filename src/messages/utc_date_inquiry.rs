@@ -3,8 +3,9 @@ use super::AisMessageType;
 use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UtcDateInquiry {
     pub message_type: u8,
     pub repeat_indicator: u8,

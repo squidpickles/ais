@@ -3,14 +3,15 @@ use nom::bits::complete::take as take_bits;
 use nom::combinator::map;
 use nom::error::ErrorKind;
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RadioStatus {
     Sotdma(SotdmaMessage),
     Itdma(ItdmaMessage),
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum SyncState {
     UtcDirect,
     UtcIndirect,
@@ -32,7 +33,7 @@ impl SyncState {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubMessage {
     SlotOffset(i16),
     UtcHourAndMinute(u8, u8),
@@ -75,7 +76,7 @@ impl SubMessage {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SotdmaMessage {
     pub sync_state: SyncState,
     pub slot_timeout: u8,
@@ -98,7 +99,7 @@ impl SotdmaMessage {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItdmaMessage {
     pub sync_state: SyncState,
     pub slot_increment: i16,

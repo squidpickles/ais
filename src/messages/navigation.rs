@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 pub fn parse_speed_over_ground(data: u16) -> Option<f32> {
     match data {
         1023 => None,
@@ -33,7 +35,7 @@ pub fn parse_heading(data: u16) -> Option<u16> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum Accuracy {
     Unaugmented,
     Dgps,
@@ -49,7 +51,7 @@ impl Accuracy {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RateOfTurn {
     raw: i8,
 }
@@ -88,7 +90,7 @@ impl RateOfTurn {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum ManeuverIndicator {
     NoSpecialManeuver,
     SpecialManeuver,

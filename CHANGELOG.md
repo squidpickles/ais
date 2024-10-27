@@ -3,6 +3,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2024-10-07
+### Added
+- Support for message type 6 (Binary Addressed Message) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 7 (Binary Acknowledge) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 9 (Standard SAR Aircraft Position Report) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 10 (UTC/Date Inquiry) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 12 (Addressed Safety-Related Message) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 13 (Safety-Related Acknowledgment) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 14 (Safety-Related Broadcast Message) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 16 (Assignment Mode Command) (thanks [@salsabiljb](https://github.com/salsabiljb))
+- Support for message type 27 (Long-Range AIS Broadcast Message) (thanks [@salsabiljb](https://github.com/salsabiljb))
+
 ## [0.11.0] - 2023-11-05
 ### Added
 - NMEA tag blocks are now accepted, but currently ignored (thanks [@jkr78](https://github.com/jkr78))

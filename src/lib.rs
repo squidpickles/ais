@@ -89,11 +89,12 @@ use sentence::AisSentence;
 use serde_json::Error as SerdeError;
 
 /// Serializes an `AisSentence` to JSON
+#[cfg(any(feature = "std", feature = "alloc"))]
+use lib::std::string::String;
 pub fn serialize_to_json(sentence: &AisSentence) -> std::result::Result<String, SerdeError> {
     serde_json::to_string(sentence)
 }
-
-/// Deserializes an `AisSentence` from JSON
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn deserialize_from_json(json_data: &str) -> std::result::Result<AisSentence, SerdeError> {
     serde_json::from_str(json_data)
 }

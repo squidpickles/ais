@@ -1,39 +1,44 @@
-//! AIS parsing library, for reading AIS NMEA sentences
+//! AIS parsing library for reading AIS NMEA sentences, with support for JSON serialization.
 //!
-//! Given an NMEA stream, this library can extract various AIS message types in more detail.
+//! This library parses NMEA AIS (Automatic Identification System) sentences and provides
+//! structured representations of the data, allowing further processing or analysis.
 //!
-//! # Example:
+//! # Features
+//! - Parses AIS NMEA sentences into structured types.
+//! - Supports JSON serialization and deserialization for `AisSentence` objects.
+//!
+//! # Example
 //! ```
-//! use ais::{AisFragments, AisParser};
+//! use ais::{AisFragments, AisParser, serialize_to_json, deserialize_from_json};
 //! use ais::messages::AisMessage;
 //!
-//! // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.
 //! let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
-//!
 //! let mut parser = AisParser::new();
-//! if let AisFragments::Complete(sentence) = parser.parse(line, true)? {
-//!     // This sentence is complete, ie unfragmented
+//!
+//! if let AisFragments::Complete(sentence) = parser.parse(line, true).unwrap() {
 //!     assert_eq!(sentence.num_fragments, 1);
-//!     // The data was transmitted on AIS channel B
 //!     assert_eq!(sentence.channel, Some('B'));
 //!
-//!     if let Some(message) = sentence.message {
+//!     if let Some(ref message) = sentence.message {
 //!         match message {
 //!             AisMessage::AidToNavigationReport(report) => {
 //!                 assert_eq!(report.mmsi, 993692028);
 //!                 assert_eq!(report.name, "SF OAK BAY BR VAIS E");
-//!                 // There are a ton more fields available here
 //!             },
 //!             _ => panic!("Unexpected message type"),
 //!         }
 //!     }
+//!
+//!     let json = serialize_to_json(&sentence).unwrap();
+//!     let deserialized_sentence = deserialize_from_json(&json).unwrap();
+//!     assert_eq!(sentence, deserialized_sentence);
 //! }
-//! # Ok::<(), ais::errors::Error>(())
 //! ```
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[doc(hidden)]
-/// standard library stuff available crate-wide, regardless of `no_std` state
+/// Standard library items, available crate-wide regardless of `no_std` state.
 pub mod lib {
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     pub mod std {
@@ -80,6 +85,20 @@ pub mod sentence;
 pub use errors::Result;
 pub use sentence::{AisFragments, AisParser};
 
+use sentence::AisSentence;
+use serde_json::Error as SerdeError;
+
+/// Serializes an `AisSentence` to JSON
+#[cfg(any(feature = "std", feature = "alloc"))]
+use lib::std::string::String;
+pub fn serialize_to_json(sentence: &AisSentence) -> std::result::Result<String, SerdeError> {
+    serde_json::to_string(sentence)
+}
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub fn deserialize_from_json(json_data: &str) -> std::result::Result<AisSentence, SerdeError> {
+    serde_json::from_str(json_data)
+}
+
 #[cfg(test)]
 mod test_helpers {
     #[inline]
@@ -94,6 +113,7 @@ mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sentence::{AisReportType, AisSentence, TalkerId};
 
     const TEST_MESSAGES: [&[u8]; 8] = [
         b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01",
@@ -108,9 +128,54 @@ mod tests {
 
     #[test]
     fn end_to_end() {
-        let mut parser = sentence::AisParser::new();
+        let mut parser = AisParser::new();
         for line in TEST_MESSAGES.iter() {
             parser.parse(line, true).unwrap();
         }
+    }
+
+    #[test]
+    fn test_json_serialization() {
+        let mut parser = AisParser::new();
+        let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
+
+        if let AisFragments::Complete(sentence) = parser.parse(line, true).unwrap() {
+            // Serialize the sentence to JSON
+            let json = serialize_to_json(&sentence).expect("Failed to serialize to JSON");
+            println!("Serialized JSON: {}", json);
+
+            // Deserialize back from JSON
+            let deserialized_sentence =
+                deserialize_from_json(&json).expect("Failed to deserialize from JSON");
+
+            assert_eq!(sentence, deserialized_sentence);
+        }
+    }
+
+    #[test]
+    fn test_serialize_deserialize() {
+        // Create a sample AisSentence struct
+        let original_sentence = AisSentence {
+            message: None,
+            talker_id: TalkerId::AI,
+            report_type: AisReportType::VDM,
+            num_fragments: 1,
+            fragment_number: 1,
+            message_id: Some(123),
+            channel: Some('A'),
+            data: vec![69, 62, 107, 98, 57, 79], // sample data; replace with real data if needed
+            fill_bit_count: 0,
+            message_type: 1,
+        };
+
+        // Serialize to JSON
+        let json_data = serialize_to_json(&original_sentence).expect("Serialization failed");
+
+        // Deserialize back to an AisSentence
+        let deserialized_sentence: AisSentence =
+            deserialize_from_json(&json_data).expect("Deserialization failed");
+
+        // Check if the deserialized struct matches the original
+        assert_eq!(original_sentence, deserialized_sentence);
     }
 }

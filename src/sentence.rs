@@ -11,6 +11,7 @@ use nom::combinator::{map, map_res, opt, peek, verify};
 use nom::number::complete::hex_u32;
 use nom::sequence::{delimited, terminated};
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
 pub const MAX_SENTENCE_SIZE_BYTES: usize = 384;
 
@@ -19,7 +20,7 @@ pub type AisRawData = lib::std::vec::Vec<u8>;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub type AisRawData = lib::std::vec::Vec<u8, MAX_SENTENCE_SIZE_BYTES>;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 /// Represents the NMEA sentence type of an AIS message
 pub enum AisReportType {
     /// Report from another ship
@@ -41,7 +42,7 @@ impl<'a> From<&'a [u8]> for AisReportType {
 }
 
 /// Talker ID for the AIS station
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum TalkerId {
     /// NMEA 4.0 Base AIS station
     AB,
@@ -84,7 +85,7 @@ impl<'a> From<&'a [u8]> for TalkerId {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum AisFragments {
     Complete(AisSentence),
     Incomplete(AisSentence),
@@ -108,7 +109,7 @@ impl From<AisFragments> for Result<AisSentence> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct AisParser {
     message_id: Option<u8>,
     fragment_number: u8,
@@ -118,7 +119,11 @@ pub struct AisParser {
 impl AisParser {
     /// Creates a new `AisParser` instance
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            message_id: None,
+            fragment_number: 0,
+            data: AisRawData::default(),
+        }
     }
 
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
@@ -185,7 +190,13 @@ impl AisParser {
     }
 }
 
-#[derive(Debug, PartialEq)]
+impl Default for AisParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 /// Represents an NMEA sentence parsed as AIS
 pub struct AisSentence {
     pub talker_id: TalkerId,

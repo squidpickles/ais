@@ -6,6 +6,7 @@ use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 const MAX_DATA_SIZE_BYTES: usize = 119;
@@ -15,7 +16,7 @@ pub type CorrectionData = lib::std::vec::Vec<u8>;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub type CorrectionData = lib::std::vec::Vec<u8, MAX_DATA_SIZE_BYTES>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DgnssBroadcastBinaryMessage {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -25,7 +26,7 @@ pub struct DgnssBroadcastBinaryMessage {
     pub payload: DifferentialCorrectionData,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DifferentialCorrectionData {
     pub message_type: u8,
     pub station_id: u16,

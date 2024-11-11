@@ -8,8 +8,9 @@ use crate::errors::Result;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StandardClassBPositionReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -42,7 +43,7 @@ impl<'a> AisMessageType<'a> for StandardClassBPositionReport {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CarrierSense {
     /// Class B SOTDMA unit
     Sotdma,

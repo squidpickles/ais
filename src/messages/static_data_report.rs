@@ -7,8 +7,9 @@ use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::combinator::map;
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StaticDataReport {
     pub message_type: u8,
     pub repeat_indicator: u8,
@@ -27,7 +28,7 @@ impl<'a> AisMessageType<'a> for StaticDataReport {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 /// Static Data Report messages have two different sub-message types.
 /// The idea is that both get broadcast periodically.
 pub enum MessagePart {

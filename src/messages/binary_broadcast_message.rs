@@ -4,6 +4,7 @@ use crate::errors::Result;
 use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
 use nom::IResult;
+use serde::{Deserialize, Serialize};
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 const MAX_DATA_SIZE_BYTES: usize = 119;
@@ -13,7 +14,7 @@ pub type MessageData = lib::std::vec::Vec<u8>;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub type MessageData = lib::std::vec::Vec<u8, MAX_DATA_SIZE_BYTES>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BinaryBroadcastMessage {
     pub message_type: u8,
     pub repeat_indicator: u8,

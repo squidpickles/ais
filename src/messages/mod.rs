@@ -26,6 +26,7 @@ pub mod standard_aircraft_position_report;
 pub mod standard_class_b_position_report;
 pub mod static_and_voyage_related_data;
 pub mod static_data_report;
+pub mod tag_block;
 pub mod types;
 pub mod utc_date_inquiry;
 pub mod utc_date_response;

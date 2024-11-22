@@ -19,7 +19,11 @@ default = ["std"]
 
 [dependencies]
 nom = { version = "7", default-features = false }
-heapless = { version = "0.7" }
+heapless = { version = "0.8.0" }
+tokio = { version = "1.0", features = ["full"] }
+clap = "4.5.11"
+tempfile = "3"
+
 
 [[bin]]
 name = "aisparser"

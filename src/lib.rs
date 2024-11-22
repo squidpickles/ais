@@ -1,18 +1,18 @@
-//! AIS parsing library, for reading AIS NMEA sentences
+//! AIS parsing library for reading and decoding AIS NMEA sentences, including those with Tag Blocks.
 //!
-//! Given an NMEA stream, this library can extract various AIS message types in more detail.
+//! Given an NMEA stream, this library can extract and parse various AIS message types in detail.
 //!
 //! # Example:
 //! ```
 //! use ais::{AisFragments, AisParser};
 //! use ais::messages::AisMessage;
 //!
-//! // The line below is an NMEA sentence, much as you'd see coming out of an AIS decoder.
+//! // The line below is an NMEA sentence, much like you'd see coming from an AIS decoder.
 //! let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
 //!
 //! let mut parser = AisParser::new();
-//! if let AisFragments::Complete(sentence) = parser.parse(line, true)? {
-//!     // This sentence is complete, ie unfragmented
+//! if let (None, AisFragments::Complete(sentence)) = parser.parse(line, true)? {
+//!     // This sentence is complete, i.e., unfragmented
 //!     assert_eq!(sentence.num_fragments, 1);
 //!     // The data was transmitted on AIS channel B
 //!     assert_eq!(sentence.channel, Some('B'));
@@ -22,13 +22,67 @@
 //!             AisMessage::AidToNavigationReport(report) => {
 //!                 assert_eq!(report.mmsi, 993692028);
 //!                 assert_eq!(report.name, "SF OAK BAY BR VAIS E");
-//!                 // There are a ton more fields available here
+//!                 // There are many more fields available here
 //!             },
 //!             _ => panic!("Unexpected message type"),
 //!         }
 //!     }
 //! }
 //! # Ok::<(), ais::errors::Error>(())
+//! ```
+//!
+//! This library also handles parsing AIS messages that include Tag Blocks, which provide additional metadata for the message.
+//!
+//!
+//! # Main Utilities
+//!
+//! This library also includes utilities for decoding AIS messages from various sources, including UDP streams, TCP streams, files, or a single AIS message passed as an argument.
+//!
+//! # Usage
+//!
+//! Run the program with one of the following options:
+//!
+//! - **UDP Mode**: Listen for AIS messages over a UDP stream.
+//!   ```sh
+//!   cargo run -- --udp <ADDRESS>
+//!   ```
+//!   Replace `<ADDRESS>` with the IP and port to bind the UDP listener (e.g., `127.0.0.1:12345`).
+//!
+//! - **TCP Mode**: Connect to a TCP server to receive and decode AIS messages.
+//!   ```sh
+//!   cargo run -- --tcp <ADDRESS>
+//!   ```
+//!   Replace `<ADDRESS>` with the IP and port of the TCP server (e.g., `127.0.0.1:12346`).
+//!
+//! - **File Mode**: Decode AIS messages from a file.
+//!   ```sh
+//!   cargo run -- --file <PATH>
+//!   ```
+//!   Replace `<PATH>` with the path to the file containing AIS messages.
+//!
+//! - **Single Message Mode**: Decode a single AIS message directly from the command line.
+//!   ```sh
+//!   cargo run -- --message <AIS_MESSAGE>
+//!   ```
+//!   Replace `<AIS_MESSAGE>` with the actual AIS message string to decode.
+//!
+//! # Arguments
+//!
+//! - `--udp` / `-u <ADDRESS>`: The address (IP:port) to listen for UDP messages.
+//! - `--tcp` / `-t <ADDRESS>`: The address (IP:port) to connect for TCP messages.
+//! - `--file` / `-f <PATH>`: The file path to read AIS messages from.
+//! - `--message` / `-m <AIS_MESSAGE>`: A single AIS message string to decode.
+//!
+//! # Example
+//!
+//! Decode a single AIS message:
+//! ```sh
+//! cargo run -- --message "!AIVDM,1,1,,B,15NG6V0P01G?cFhE`R2IU?wn28R>,0*05"
+//! ```
+//!
+//! Decode AIS messages from a file:
+//! ```sh
+//! cargo run -- --file /path/to/ais_messages.txt
 //! ```
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -73,9 +127,11 @@ pub mod lib {
     }
 }
 
+pub mod decoders;
 pub mod errors;
 pub mod messages;
 pub mod sentence;
+pub use decoders::utils::{decode, decode_from_file, decode_from_tcp, decode_from_udp};
 
 pub use errors::Result;
 pub use sentence::{AisFragments, AisParser};

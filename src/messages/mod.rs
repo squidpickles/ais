@@ -7,6 +7,7 @@ pub mod addressed_safety_related;
 pub mod aid_to_navigation_report;
 pub mod assignment_mode_command;
 pub mod base_station_report;
+pub mod binary_acknowledge;
 pub mod binary_addressed;
 pub mod binary_broadcast_message;
 pub mod data_link_management_message;
@@ -29,7 +30,6 @@ pub mod static_data_report;
 pub mod types;
 pub mod utc_date_inquiry;
 pub mod utc_date_response;
-pub mod binary_acknowledge;
 
 pub use parsers::message_type;
 
@@ -163,7 +163,7 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
 /// See <https://gpsd.gitlab.io/gpsd/AIVDM.html> for more details.
 pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<AisRawData> {
     let bit_count = data.len() * 6;
-    let byte_count = (bit_count / 8) + ((bit_count % 8 != 0) as usize);
+    let byte_count = (bit_count / 8) + (!bit_count.is_multiple_of(8) as usize);
     #[cfg(any(feature = "std", feature = "alloc"))]
     let mut output = vec![0; byte_count];
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]

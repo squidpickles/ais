@@ -1,11 +1,11 @@
 //! Binary Acknowledge (type 7)
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))] 
- use super::nom_noalloc::many_m_n; 
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+use super::nom_noalloc::many_m_n;
 use super::AisMessageType;
 use crate::errors::Result;
 use crate::lib;
 use nom::bits::{bits, complete::take as take_bits};
-#[cfg(any(feature = "std", feature = "alloc"))] 
+#[cfg(any(feature = "std", feature = "alloc"))]
 use nom::multi::many_m_n;
 use nom::IResult;
 

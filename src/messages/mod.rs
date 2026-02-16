@@ -142,9 +142,12 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         27 => Ok(AisMessage::LongRangeAisBroadcastMessage(
             long_range_ais_broadcast::LongRangeAisBroadcastMessage::parse(unarmored)?,
         )),
+        #[cfg(any(feature = "std", feature = "alloc"))]
         _ => Err(Error::UnsupportedMessageType {
             message_type: result,
         }),
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        _ => Err("Unimplemented message type".into()),
     }
 }
 

@@ -1,4 +1,6 @@
 //! Specific AIS message types
+#[cfg(any(feature = "std", feature = "alloc"))]
+use crate::errors::Error;
 use crate::errors::Result;
 use crate::lib;
 use crate::sentence::AisRawData;
@@ -140,10 +142,9 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
         27 => Ok(AisMessage::LongRangeAisBroadcastMessage(
             long_range_ais_broadcast::LongRangeAisBroadcastMessage::parse(unarmored)?,
         )),
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        _ => Err(format!("Unimplemented type: {}", result).into()),
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        _ => Err("Unimplemented message type".into()),
+        _ => Err(Error::UnsupportedMessageType {
+            message_type: result,
+        }),
     }
 }
 

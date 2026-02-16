@@ -17,6 +17,8 @@ mod err {
         Nmea { msg: String },
         //#[error("checksum mismatch; expected: {expected:#X}, received: {found:#X}")]
         Checksum { expected: u8, found: u8 },
+        //#[error("unimplemented message type: {message_type}")]
+        UnsupportedMessageType { message_type: u8 },
     }
 
     #[cfg(feature = "std")]
@@ -28,6 +30,9 @@ mod err {
                 Self::Nmea { msg } => format!("Error parsing NMEA content: {}", msg),
                 Self::Checksum { expected, found } => {
                     format!("Checksum error; expected 0x{expected:x}, found 0x{found:x}")
+                }
+                Self::UnsupportedMessageType { message_type } => {
+                    format!("Unimplemented message type: {message_type}")
                 }
             };
             f.write_str(&msg)
@@ -84,6 +89,8 @@ mod err {
         Nmea { msg: &'static str },
         //#[error("checksum mismatch; expected: {expected:#X}, received: {found:#X}")]
         Checksum { expected: u8, found: u8 },
+        //#[error("unimplemented message type: {message_type}")]
+        UnsupportedMessageType { message_type: u8 },
     }
 
     impl From<&'static str> for Error {

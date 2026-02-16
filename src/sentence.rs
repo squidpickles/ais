@@ -121,12 +121,27 @@ impl AisParser {
         Self::default()
     }
 
+    /// Parses `line` as an AIS message. If the checksum matches and the message
+    /// is complete (i.e. it is not a fragment), and the message type is also
+    /// supported, this will return the message itself. Does not return the NMEA
+    /// sentence information or raw AIS data; if that's needed, use the lower-level
+    /// [`AisParser::parse()`] method instead. Unsupported message types will return
+    /// [`Error::UnsupportedMessageType`].
+    pub fn parse_message(&mut self, line: &[u8]) -> Result<Option<AisMessage>> {
+        match self.parse(line)? {
+            AisFragments::Complete(sentence) => Ok(sentence.message),
+            AisFragments::Incomplete(_) => Ok(None),
+        }
+    }
+
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
     /// an `AisSentence`. Note that several `AisSentence`s might be required to
     /// complete a message, if they are fragments.
     /// The internal AIS message will also be parsed, and AIS data will additionally
-    /// be passed along raw. See [`AisParser::parse_raw`] if you don't need the message
-    /// parsing.
+    /// be passed along raw. See [`AisParser::parse_raw()`] if you don't need the message
+    /// parsing. See [`AisParser::parse_message()`] if you only want the message, for a
+    /// higher-level interface.
+    /// Unsupported message types will return [`Error::UnsupportedMessageType`].
     pub fn parse(&mut self, line: &[u8]) -> Result<AisFragments> {
         let mut result = self.parse_raw(line)?;
         if let AisFragments::Complete(ref mut ais_sentence) = result {

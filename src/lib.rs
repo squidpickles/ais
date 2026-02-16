@@ -11,7 +11,7 @@
 //! let line = b"!AIVDM,1,1,,B,E>kb9O9aS@7PUh10dh19@;0Tah2cWrfP:l?M`00003vP100,0*01";
 //!
 //! let mut parser = AisParser::new();
-//! if let AisFragments::Complete(sentence) = parser.parse(line, true)? {
+//! if let AisFragments::Complete(sentence) = parser.parse(line)? {
 //!     // This sentence is complete, ie unfragmented
 //!     assert_eq!(sentence.num_fragments, 1);
 //!     // The data was transmitted on AIS channel B
@@ -110,7 +110,7 @@ mod tests {
     fn end_to_end() {
         let mut parser = sentence::AisParser::new();
         for line in TEST_MESSAGES.iter() {
-            parser.parse(line, true).unwrap();
+            parser.parse(line).unwrap();
         }
     }
 }

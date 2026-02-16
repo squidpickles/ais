@@ -6,7 +6,7 @@ use lib::std::io::BufRead;
 use lib::std::io;
 
 fn parse_nmea_line(parser: &mut AisParser, line: &[u8]) -> Result<(), ais::errors::Error> {
-    let sentence = parser.parse(line, true)?;
+    let sentence = parser.parse(line)?;
     if let AisFragments::Complete(sentence) = sentence {
         println!(
             "{:?}\t{:?}",

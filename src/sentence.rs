@@ -123,11 +123,24 @@ impl AisParser {
 
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
     /// an `AisSentence`. Note that several `AisSentence`s might be required to
-    /// complete a message, if they are fragments
-    /// If `decode` is `true`, the internal AIS message will also be parsed
-    /// If it is `false`, then internal AIS messages will be ignored.
-    /// In both cases, AIS data will be passed along raw.
-    pub fn parse(&mut self, line: &[u8], decode: bool) -> Result<AisFragments> {
+    /// complete a message, if they are fragments.
+    /// The internal AIS message will also be parsed, and AIS data will additionally
+    /// be passed along raw. See [`AisParser::parse_raw`] if you don't need the message
+    /// parsing.
+    pub fn parse(&mut self, line: &[u8]) -> Result<AisFragments> {
+        let mut result = self.parse_raw(line)?;
+        if let AisFragments::Complete(ref mut ais_sentence) = result {
+            let unarmored =
+                messages::unarmor(&ais_sentence.data, ais_sentence.fill_bit_count as usize)?;
+            ais_sentence.message = Some(messages::parse(&unarmored)?);
+        }
+        Ok(result)
+    }
+
+    /// Parses `line` as an NMEA sentence, checking the checksum and returning an
+    /// an `AisSentence`. Note that several `AisSentence`s might be required to
+    /// complete a message, if they are fragments. AIS data will be passed along raw.
+    pub fn parse_raw(&mut self, line: &[u8]) -> Result<AisFragments> {
         let (_, (data, mut ais_sentence, checksum)) = parse_nmea_sentence(line)?;
         Self::check_checksum(data, checksum)?;
         if ais_sentence.has_more() {
@@ -144,11 +157,6 @@ impl AisParser {
                 let mut data = AisRawData::default();
                 lib::std::mem::swap(&mut data, &mut self.data);
                 ais_sentence.data = data;
-            }
-            if decode {
-                let unarmored =
-                    messages::unarmor(&ais_sentence.data, ais_sentence.fill_bit_count as usize)?;
-                ais_sentence.message = Some(messages::parse(&unarmored)?)
             }
             Ok(AisFragments::Complete(ais_sentence))
         }
@@ -358,7 +366,7 @@ mod tests {
     #[test]
     fn parse_using_struct_valid() {
         let mut parser = AisParser::new();
-        let result = parser.parse(GOOD_CHECKSUM, false).unwrap();
+        let result = parser.parse_raw(GOOD_CHECKSUM).unwrap();
         assert_eq!(
             result,
             AisFragments::Complete(AisSentence {
@@ -384,22 +392,22 @@ mod tests {
     #[test]
     fn parse_valid_checksum() {
         let mut parser = AisParser::new();
-        let result = parser.parse(GOOD_CHECKSUM, false);
+        let result = parser.parse_raw(GOOD_CHECKSUM);
         assert!(result.is_ok());
     }
 
     #[test]
     fn parse_invalid_checksum() {
         let mut parser = AisParser::new();
-        let result = parser.parse(BAD_CHECKSUM, false);
+        let result = parser.parse_raw(BAD_CHECKSUM);
         assert!(result.is_err());
     }
 
     #[test]
     fn parse_multiple_fragments() {
         let mut parser = AisParser::new();
-        let frag1 = parser.parse(FRAGMENT_1, false).unwrap();
-        let frag2 = parser.parse(FRAGMENT_2, false).unwrap();
+        let frag1 = parser.parse_raw(FRAGMENT_1).unwrap();
+        let frag2 = parser.parse_raw(FRAGMENT_2).unwrap();
         if let AisFragments::Complete(_) = frag1 {
             panic!("Expected frag1 to be incomplete, but it was {:?}", frag1);
         }

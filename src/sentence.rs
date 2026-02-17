@@ -108,15 +108,35 @@ impl From<AisFragments> for Result<AisSentence> {
     }
 }
 
+/// Internal slot for tracking reassembly of a single multi-fragment message
 #[derive(Debug, Default)]
-pub struct AisParser {
-    message_id: Option<u8>,
+struct FragmentSlot {
     fragment_number: u8,
     data: AisRawData,
 }
 
+const NUM_MESSAGE_SLOTS: usize = 10; // 10 possible message IDs, so this allocates one per ID
+
+/// Stateful parser for NMEA 0183 AIS sentences with automatic multi-fragment
+/// reassembly. Use [`Self::parse_message()`], [`Self::parse()`], or [`Self::parse_raw()`]
+/// as needed. Note that fragments must be received in order, and if there
+/// are multiple senders simultaneously sending messages with the same ID,
+/// collisions will occur.
+#[derive(Debug)]
+pub struct AisParser {
+    slots: [Option<FragmentSlot>; NUM_MESSAGE_SLOTS],
+}
+
+impl Default for AisParser {
+    fn default() -> Self {
+        Self {
+            slots: core::array::from_fn(|_| None),
+        }
+    }
+}
+
 impl AisParser {
-    /// Creates a new `AisParser` instance
+    /// Creates a new [`AisParser`] instance
     pub fn new() -> Self {
         Self::default()
     }
@@ -135,7 +155,7 @@ impl AisParser {
     }
 
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
-    /// an `AisSentence`. Note that several `AisSentence`s might be required to
+    /// an [`AisSentence`]. Note that several [`AisSentence`]s might be required to
     /// complete a message, if they are fragments.
     /// The internal AIS message will also be parsed, and AIS data will additionally
     /// be passed along raw. See [`AisParser::parse_raw()`] if you don't need the message
@@ -153,44 +173,81 @@ impl AisParser {
     }
 
     /// Parses `line` as an NMEA sentence, checking the checksum and returning an
-    /// an `AisSentence`. Note that several `AisSentence`s might be required to
+    /// an [`AisSentence`]. Note that several [`AisSentence`]s might be required to
     /// complete a message, if they are fragments. AIS data will be passed along raw.
     pub fn parse_raw(&mut self, line: &[u8]) -> Result<AisFragments> {
         let (_, (data, mut ais_sentence, checksum)) = parse_nmea_sentence(line)?;
         Self::check_checksum(data, checksum)?;
+
+        if !ais_sentence.is_fragment() {
+            return Ok(AisFragments::Complete(ais_sentence));
+        }
+
+        let idx = self.slot_index(&ais_sentence)?;
+
+        if ais_sentence.fragment_number == 1 {
+            self.slots[idx] = Some(FragmentSlot::default());
+        }
+
+        self.extend_slot(idx, &ais_sentence)?;
+
         if ais_sentence.has_more() {
-            if ais_sentence.fragment_number == 1 {
-                self.message_id = ais_sentence.message_id;
-                self.fragment_number = 0;
-                self.data = AisRawData::default();
-            }
-            self.verify_and_extend_data(&ais_sentence)?;
             Ok(AisFragments::Incomplete(ais_sentence))
         } else {
-            if ais_sentence.is_fragment() {
-                self.verify_and_extend_data(&ais_sentence)?;
-                let mut data = AisRawData::default();
-                lib::std::mem::swap(&mut data, &mut self.data);
-                ais_sentence.data = data;
-            }
+            let slot = self.slots[idx]
+                .take()
+                .ok_or_else(|| Error::from("Missing fragment slot data"))?;
+            ais_sentence.data = slot.data;
             Ok(AisFragments::Complete(ais_sentence))
         }
     }
 
-    fn verify_and_extend_data(&mut self, ais_sentence: &AisSentence) -> Result<()> {
-        if self.message_id != ais_sentence.message_id {
-            return Err("Message ID out of sequence".into());
+    /// Maps a sentence's `message_id` to the corresponding slot index.
+    /// Returns an error if the sentence is a fragment but has no `message_id`,
+    /// or if the `message_id` is out of range.
+    fn slot_index(&self, sentence: &AisSentence) -> Result<usize> {
+        let idx = sentence
+            .message_id
+            .ok_or_else(|| Error::from("Fragment missing message ID"))
+            .map(|id| id as usize)?;
+        if (0..NUM_MESSAGE_SLOTS).contains(&idx) {
+            Ok(idx)
+        } else {
+            Err(Error::from("Message ID out of range"))
         }
-        if ais_sentence.fragment_number - self.fragment_number != 1 {
-            return Err("Fragment numbers out of sequence".into());
+    }
+
+    /// Validates fragment sequence and extends the slot with the sentence's data.
+    fn extend_slot(&mut self, idx: usize, sentence: &AisSentence) -> Result<()> {
+        let slot_option = &mut self.slots[idx];
+
+        let expected_fragment_number = slot_option
+            .as_ref()
+            .map(|s| s.fragment_number + 1)
+            .unwrap_or(1);
+
+        if sentence.fragment_number != expected_fragment_number {
+            *slot_option = None;
+            return Err(Error::from("Fragment numbers out of sequence"));
         }
-        self.fragment_number = ais_sentence.fragment_number;
+
+        let slot = slot_option
+            .as_mut()
+            .ok_or_else(|| Error::from("Fragment slot unexpectedly missing"))?;
+
+        slot.fragment_number = sentence.fragment_number;
+
         #[cfg(any(feature = "std", feature = "alloc"))]
-        self.data.extend_from_slice(&ais_sentence.data);
+        slot.data.extend_from_slice(&sentence.data);
+
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        self.data
-            .extend_from_slice(&ais_sentence.data)
-            .map_err(|_| Error::from("Vec is full on extend_from_slice"))?;
+        {
+            if slot.data.extend_from_slice(&sentence.data).is_err() {
+                *slot_option = None;
+                return Err(Error::from("Vec is full on extend_from_slice"));
+            }
+        }
+
         Ok(())
     }
 
@@ -477,5 +534,78 @@ mod tests {
     #[test]
     fn parse_sentence_with_invalid_tag_block() {
         assert!(parse_ais_sentence(&WITH_BAD_TAG_BLOCK[1..64]).is_err());
+    }
+
+    #[test]
+    fn parse_interleaved_fragments() {
+        // Two different multi-fragment messages with different message IDs interleaved
+        // Message ID 1, Fragment 1 of 2
+        const MSG1_FRAG1: &[u8] =
+            b"!AIVDM,2,1,1,A,53`soB8000010KSOW<0P4eDp4l6000000000000U0p<24t@P05H3S833CDP00000,0*7B";
+        // Message ID 2, Fragment 1 of 2
+        const MSG2_FRAG1: &[u8] =
+            b"!AIVDM,2,1,2,B,55?MbV02>H97jKH4<F16Dr;0@T4@Dk0000000000017R@sEE6N0j`0000000,0*5F";
+        // Message ID 1, Fragment 2 of 2
+        const MSG1_FRAG2: &[u8] = b"!AIVDM,2,2,1,A,0000000,2*25";
+        // Message ID 2, Fragment 2 of 2
+        const MSG2_FRAG2: &[u8] = b"!AIVDM,2,2,2,B,0000000,2*25";
+
+        let mut parser = AisParser::new();
+
+        let result1 = parser.parse_raw(MSG1_FRAG1).unwrap();
+        assert!(matches!(result1, AisFragments::Incomplete(_)));
+
+        let result2 = parser.parse_raw(MSG2_FRAG1).unwrap();
+        assert!(matches!(result2, AisFragments::Incomplete(_)));
+
+        let result3 = parser.parse_raw(MSG1_FRAG2).unwrap();
+        if let AisFragments::Complete(sentence) = result3 {
+            assert_eq!(sentence.num_fragments, 2);
+            assert_eq!(sentence.message_id, Some(1));
+        } else {
+            panic!("Expected msg1 to be complete, but it was {:?}", result3);
+        }
+
+        let result4 = parser.parse_raw(MSG2_FRAG2).unwrap();
+        if let AisFragments::Complete(sentence) = result4 {
+            assert_eq!(sentence.num_fragments, 2);
+            assert_eq!(sentence.message_id, Some(2));
+        } else {
+            panic!("Expected msg2 to be complete, but it was {:?}", result4);
+        }
+    }
+
+    #[test]
+    fn parse_interleaved_error_isolation() {
+        // Test that an error in one message_id doesn't affect another
+        const MSG1_FRAG1: &[u8] =
+            b"!AIVDM,2,1,1,A,53`soB8000010KSOW<0P4eDp4l6000000000000U0p<24t@P05H3S833CDP00000,0*7B";
+        const MSG2_FRAG1: &[u8] =
+            b"!AIVDM,2,1,2,B,55?MbV02>H97jKH4<F16Dr;0@T4@Dk0000000000017R@sEE6N0j`0000000,0*5F";
+        // Out-of-sequence fragment for message ID 1 (fragment 3, but we expect 2)
+        const MSG1_FRAG3_BAD: &[u8] = b"!AIVDM,2,3,1,A,0000000,2*24";
+        const MSG2_FRAG2: &[u8] = b"!AIVDM,2,2,2,B,0000000,2*25";
+
+        let mut parser = AisParser::new();
+
+        let result1 = parser.parse_raw(MSG1_FRAG1).unwrap();
+        assert!(matches!(result1, AisFragments::Incomplete(_)));
+
+        let result2 = parser.parse_raw(MSG2_FRAG1).unwrap();
+        assert!(matches!(result2, AisFragments::Incomplete(_)));
+
+        let result3 = parser.parse_raw(MSG1_FRAG3_BAD);
+        assert!(result3.is_err());
+
+        let result4 = parser.parse_raw(MSG2_FRAG2).unwrap();
+        if let AisFragments::Complete(sentence) = result4 {
+            assert_eq!(sentence.num_fragments, 2);
+            assert_eq!(sentence.message_id, Some(2));
+        } else {
+            panic!(
+                "Expected msg2 to be complete despite msg1 error, but it was {:?}",
+                result4
+            );
+        }
     }
 }

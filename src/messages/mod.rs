@@ -151,6 +151,22 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
     }
 }
 
+// Invalid characters use a sentinel outside the six-bit range.
+const DEARMOR: [u8; 256] = {
+    let mut table = [0xff; 256];
+    let mut i = 48;
+    while i <= 87 {
+        table[i] = (i - 48) as u8;
+        i += 1;
+    }
+    i = 96;
+    while i <= 119 {
+        table[i] = (i - 56) as u8;
+        i += 1;
+    }
+    table
+};
+
 /// Converts 8-bit ASCII (armored) into packed 6-bit (unarmored) sequences.
 ///
 /// AIS data is bit-, not byte-oriented. AIS data is split into 6-bit chunks,
@@ -164,6 +180,12 @@ pub fn parse(unarmored: &[u8]) -> Result<AisMessage> {
 /// Returns an error if any of the individual bytes cannot be converted
 /// to a valid 6-bit chunk.
 ///
+/// Uses lookup-based four-to-three packing. Algorithm developed by Henrik Holm.
+/// Described in Holm and Mellegård,
+/// *Fast Decoding of Automatic Identification Systems (AIS) Data*, COMPIT 2018:
+/// <https://www.researchgate.net/publication/325301032>.
+/// Preserves the forward byte order expected by this crate's parsers.
+/// Supply a fill count of 0..=5, and zero for empty input.
 /// See <https://gpsd.gitlab.io/gpsd/AIVDM.html> for more details.
 pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<AisRawData> {
     let bit_count = data.len() * 6;
@@ -178,49 +200,73 @@ pub fn unarmor(data: &[u8], fill_bits: usize) -> Result<AisRawData> {
             .map_err(|_| crate::errors::Error::from("Unarmor output vector too large"))?;
         output
     };
-    let mut offset = 0;
-    for byte in data {
-        let unarmored = match *byte {
-            48..=87 => byte - 48,
-            96..=119 => byte - 56,
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            _ => return Err(format!("Value out of range: {}", byte).into()),
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-            _ => return Err("Armored byte value out of range".into()),
-        } << 2;
-        let offset_byte = offset / 8;
-        let offset_bit = offset % 8;
-        output[offset_byte] |= unarmored >> offset_bit;
-        if offset_bit > 2 {
-            // Continue into the next byte
-            output[offset_byte + 1] |= unarmored << (8 - offset_bit);
+
+    let mut chunks = data.chunks_exact(4);
+    for (chunk, dst) in chunks.by_ref().zip(output.chunks_exact_mut(3)) {
+        let a = DEARMOR[chunk[0] as usize];
+        let b = DEARMOR[chunk[1] as usize];
+        let c = DEARMOR[chunk[2] as usize];
+        let d = DEARMOR[chunk[3] as usize];
+        if (a | b | c | d) & 0xc0 != 0 {
+            // Report the first invalid character, matching the original behavior.
+            let byte = chunk
+                .iter()
+                .copied()
+                .find(|&byte| DEARMOR[byte as usize] == 0xff)
+                .unwrap();
+            return Err(invalid_armored_byte(byte));
         }
-        offset += 6;
+        let packed = ((a as u32) << 18) | ((b as u32) << 12) | ((c as u32) << 6) | d as u32;
+        dst[0] = (packed >> 16) as u8;
+        dst[1] = (packed >> 8) as u8;
+        dst[2] = packed as u8;
     }
+    // At most three remaining characters; their bits are left aligned.
+    let remainder = chunks.remainder();
+    let mut packed = 0u32;
+    for (i, &byte) in remainder.iter().enumerate() {
+        let value = DEARMOR[byte as usize];
+        if value == 0xff {
+            return Err(invalid_armored_byte(byte));
+        }
+        packed |= (value as u32) << (18 - 6 * i);
+    }
+    let tail = &mut output[data.len() / 4 * 3..];
+    let bytes = packed.to_be_bytes();
+    tail.copy_from_slice(&bytes[1..1 + tail.len()]);
+
+    // Preserve the original output length and fill-bit masking exactly.
     if fill_bits != 0 {
         let bits_in_final_byte = match bit_count % 8 {
             0 => 8,
-            1..=7 => bit_count % 8,
-            _ => unreachable!(),
+            n => n,
         };
         let final_idx = byte_count - 1;
-        {
-            let byte = &mut output[final_idx];
-            let shift =
-                (8 - bits_in_final_byte) + lib::std::cmp::min(fill_bits, bits_in_final_byte);
-            *byte &= match shift {
-                0..=7 => 0xffu8 << shift,
-                8 => 0x0u8,
-                _ => unreachable!(),
-            };
-        }
+        let shift = (8 - bits_in_final_byte) + lib::std::cmp::min(fill_bits, bits_in_final_byte);
+        output[final_idx] &= if shift == 8 { 0 } else { 0xffu8 << shift };
         if fill_bits > bits_in_final_byte {
-            let byte = &mut output[final_idx - 1];
-            *byte &= 0xffu8 << (fill_bits - bits_in_final_byte);
+            output[final_idx - 1] &= 0xffu8 << (fill_bits - bits_in_final_byte);
         }
     }
     Ok(output)
 }
+
+#[cold]
+fn invalid_armored_byte(byte: u8) -> crate::errors::Error {
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    {
+        format!("Value out of range: {}", byte).into()
+    }
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    {
+        let _ = byte;
+        "Armored byte value out of range".into()
+    }
+}
+
+#[cfg(test)]
+#[path = "../../tests/support/unarmor_reference.rs"]
+mod unarmor_reference;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 #[inline]
@@ -237,6 +283,51 @@ fn push_unwrap<T: core::fmt::Debug, const C: usize>(list: &mut lib::std::vec::Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn optimized_matches_original_lengths_and_fill() {
+        let mut data = [0u8; 512];
+        let mut state = 123456789u32;
+        for byte in &mut data {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            let value = (state & 63) as u8;
+            *byte = if value < 40 { value + 48 } else { value + 56 };
+        }
+        assert_eq!(
+            unarmor(b"", 0).unwrap(),
+            unarmor_reference::unarmor(b"", 0).unwrap()
+        );
+        for len in 1..=data.len() {
+            for fill in 0..=5 {
+                assert_eq!(
+                    unarmor(&data[..len], fill).unwrap(),
+                    unarmor_reference::unarmor(&data[..len], fill).unwrap(),
+                    "length={len}, fill={fill}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn optimized_all_byte_values_and_positions() {
+        for len in 1..=12 {
+            for pos in 0..len {
+                for byte in 0..=255u8 {
+                    let mut data = [b'0'; 12];
+                    data[pos] = byte;
+                    let expected = unarmor_reference::unarmor(&data[..len], 0);
+                    let actual = unarmor(&data[..len], 0);
+                    match (expected, actual) {
+                        (Ok(a), Ok(b)) => assert_eq!(a, b),
+                        (Err(a), Err(b)) => assert_eq!(a, b),
+                        _ => panic!("mismatch: length={len}, position={pos}, byte={byte}"),
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn unarmor_single_byte() {

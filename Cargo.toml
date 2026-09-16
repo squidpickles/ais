@@ -24,3 +24,7 @@ heapless = { version = "0.7" }
 [[bin]]
 name = "aisparser"
 required-features = ["std"]
+
+[[example]]
+name = "compare_unarmor"
+required-features = ["std"]

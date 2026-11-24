@@ -92,13 +92,14 @@ pub fn parse_6bit_ascii(
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
         lib::std::str::from_utf8(&bytes)
-            .map(|val| {
-                (
-                    input,
-                    val.trim_start().trim_end_matches('@').trim_end().into(),
-                )
+            .ok()
+            .and_then(|val| {
+                AsciiString::try_from(val.trim_start().trim_end_matches('@').trim_end()).ok()
             })
-            .map_err(|_| nom::Err::Failure(nom::error::Error::new(input, ErrorKind::AlphaNumeric)))
+            .map(|val| (input, val))
+            .ok_or_else(|| {
+                nom::Err::Failure(nom::error::Error::new(input, ErrorKind::AlphaNumeric))
+            })
     }
 }
 
